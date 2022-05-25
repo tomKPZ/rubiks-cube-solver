@@ -480,14 +480,13 @@ int main() {
   scrambled.depth = 1;
   scrambled.prev_move = 0;
 
-  State *table1 = calloc(N, sizeof(State));
-  State *table2 = calloc(N, sizeof(State));
-  insert(table1, &solved);
-  insert(table2, &scrambled);
+  State *tables[2] = {calloc(N, sizeof(State)), calloc(N, sizeof(State))};
+  insert(tables[0], &solved);
+  insert(tables[1], &scrambled);
 
   for (size_t depth = 1; true; depth++) {
     for (int table_i = 0; table_i < 2; table_i++) {
-      State *table = table_i ? table2 : table1;
+      State *table = tables[table_i];
       for (size_t i = 0; i < N; i++) {
         if (table[i].depth == depth) {
           for (unsigned char move = 0; move <= MOVE_END; move++) {
@@ -495,10 +494,10 @@ int main() {
             if (get(table, &next))
               continue;
             insert(table, &next);
-            State *match = get(table == table1 ? table2 : table1, &next);
+            State *match = get(tables[!table_i], &next);
             if (match) {
-              output_moves_from(table1, get(table1, match));
-              output_moves_to(table2, get(table2, match));
+              output_moves_from(tables[0], get(tables[0], match));
+              output_moves_to(tables[1], get(tables[1], match));
               printf("\n");
               return 0;
             }
