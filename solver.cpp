@@ -384,7 +384,7 @@ constexpr size_t N = 1024 * 1024;
 State *table = nullptr;
 
 State *get(const State &state) {
-  for (auto bucket = hash_state(state) % N; !table[bucket].prev_move;
+  for (auto bucket = hash_state(state) % N; table[bucket].prev_move;
        bucket = (bucket + 1) % N) {
     if (cmp_state(state, table[bucket]) == 0)
       return &table[bucket];
@@ -481,8 +481,14 @@ int main() {
     }
   }
 
+  State scrambled = solved;
+  scrambled = make_move(scrambled, MOVE_R);
+  scrambled = make_move(scrambled, MOVE_U);
+  scrambled = make_move(scrambled, MOVE_RP);
+  scrambled = make_move(scrambled, MOVE_UP);
   for (int depth = 0; true; depth++) {
-    if (dfs(solved, depth)) {
+    printf("dfs %d\n", depth);
+    if (dfs(scrambled, depth)) {
       printf("\n");
       return 0;
     }
