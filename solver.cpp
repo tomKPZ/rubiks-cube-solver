@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 using RotationState = unsigned int;
 
 enum Rotation : unsigned char {
@@ -189,61 +191,136 @@ State make_move(State state, Move move) {
   case MOVE_R:
     ROTATE_EDGES(3, 6, 11, 8);
     ROTATE_CORNERS(2, 6, 8, 4);
+    break;
   case MOVE_RP:
     ROTATEP_EDGES(3, 6, 11, 8);
     ROTATEP_CORNERS(2, 6, 8, 4);
+    break;
   case MOVE_R2:
     ROTATE2_EDGES(3, 6, 11, 8);
     ROTATE2_CORNERS(2, 6, 8, 4);
+    break;
   case MOVE_L:
     ROTATE_EDGES(2, 7, 10, 5);
     ROTATE_CORNERS(1, 3, 7, 5);
+    break;
   case MOVE_LP:
     ROTATEP_EDGES(2, 7, 10, 5);
     ROTATEP_CORNERS(1, 3, 7, 5);
+    break;
   case MOVE_L2:
     ROTATE2_EDGES(2, 7, 10, 5);
     ROTATE2_CORNERS(1, 3, 7, 5);
+    break;
   case MOVE_F:
     ROTATE_EDGES(4, 8, 12, 7);
     ROTATE_CORNERS(3, 4, 8, 7);
+    break;
   case MOVE_FP:
     ROTATEP_EDGES(4, 8, 12, 7);
     ROTATEP_CORNERS(3, 4, 8, 7);
+    break;
   case MOVE_F2:
     ROTATE2_EDGES(4, 8, 12, 7);
     ROTATE2_CORNERS(3, 4, 8, 7);
+    break;
   case MOVE_B:
     ROTATE_EDGES(1, 5, 9, 6);
     ROTATE_CORNERS(1, 5, 6, 2);
+    break;
   case MOVE_BP:
     ROTATEP_EDGES(1, 5, 9, 6);
     ROTATEP_CORNERS(1, 5, 6, 2);
+    break;
   case MOVE_B2:
     ROTATE2_EDGES(1, 5, 9, 6);
     ROTATE2_CORNERS(1, 5, 6, 2);
+    break;
   case MOVE_U:
     ROTATE_EDGES(1, 3, 4, 2);
     ROTATE_CORNERS(1, 2, 4, 3);
+    break;
   case MOVE_UP:
     ROTATEP_EDGES(1, 3, 4, 2);
     ROTATEP_CORNERS(1, 2, 4, 3);
+    break;
   case MOVE_U2:
     ROTATE2_EDGES(1, 3, 4, 2);
     ROTATE2_CORNERS(1, 2, 4, 3);
+    break;
   case MOVE_D:
     ROTATE_EDGES(11, 9, 10, 12);
     ROTATE_CORNERS(6, 5, 7, 8);
+    break;
   case MOVE_DP:
     ROTATEP_EDGES(11, 9, 10, 12);
     ROTATEP_CORNERS(6, 5, 7, 8);
+    break;
   case MOVE_D2:
     ROTATE2_EDGES(11, 9, 10, 12);
     ROTATE2_CORNERS(6, 5, 7, 8);
+    break;
   case MOVE_END:
     throw;
   }
+  state.prev_move = move;
+  state.depth++;
   return state;
 }
 
-int main() { return 0; }
+void output_state(const State &state) {
+  printf("%d %d %d %d %d %d %d %d\n", state.corner1, state.corner2,
+         state.corner3, state.corner4, state.corner5, state.corner6,
+         state.corner7, state.corner8);
+  printf("%d %d %d %d %d %d %d %d %d %d %d %d\n", state.edge1, state.edge2,
+         state.edge3, state.edge4, state.edge5, state.edge6, state.edge7,
+         state.edge8, state.edge9, state.edge10, state.edge11, state.edge12);
+  printf("%d %d %d %d %d %d %d %d %d %d %d %d\n", state.edge1_parity,
+         state.edge2_parity, state.edge3_parity, state.edge4_parity,
+         state.edge5_parity, state.edge6_parity, state.edge7_parity,
+         state.edge8_parity, state.edge9_parity, state.edge10_parity,
+         state.edge11_parity, state.edge12_parity);
+  printf("%d %d\n", state.depth, state.prev_move);
+}
+
+int main() {
+  State state{
+      .corner1 = 0,
+      .corner2 = 0,
+      .corner3 = 0,
+      .corner4 = 0,
+      .corner5 = 0,
+      .corner6 = 0,
+      .corner7 = 0,
+      .corner8 = 0,
+
+      .edge1 = 0,
+      .edge2 = 1,
+      .edge3 = 2,
+      .edge4 = 3,
+      .edge5 = 4,
+      .edge6 = 5,
+      .edge7 = 6,
+      .edge8 = 7,
+      .edge9 = 8,
+      .edge10 = 9,
+      .edge11 = 10,
+      .edge12 = 11,
+      .edge1_parity = false,
+      .edge2_parity = false,
+      .edge3_parity = false,
+      .edge4_parity = false,
+      .edge5_parity = false,
+      .edge6_parity = false,
+      .edge7_parity = false,
+      .edge8_parity = false,
+      .edge9_parity = false,
+      .edge10_parity = false,
+      .edge11_parity = false,
+      .edge12_parity = false,
+
+      .depth = 0,
+      .prev_move = MOVE_END,
+  };
+  return 0;
+}
