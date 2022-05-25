@@ -1,4 +1,4 @@
-using RotationState = unsigned char;
+using RotationState = unsigned int;
 
 enum Rotation : unsigned char {
   ROTATE_R = 0,
@@ -74,6 +74,8 @@ struct State {
   Move prev_move;
 };
 
+static_assert(sizeof(State) == 16, "");
+
 constexpr RotationState rotate[][ROTATE_END] = {
     {9, 12, 5, 2, 3, 1, 22, 18, 4},     {13, 8, 4, 3, 2, 0, 19, 23, 5},
     {17, 20, 7, 1, 0, 3, 10, 14, 6},    {21, 16, 6, 0, 1, 2, 15, 11, 7},
@@ -144,7 +146,6 @@ Rotation move_to_rotation(Move move) {
     state.edge##c##_parity = !state.edge##c##_parity;                          \
     state.edge##d##_parity = !state.edge##d##_parity;                          \
   }
-
 #define ROTATE_CORNERS(a, b, c, d)                                             \
   {                                                                            \
     auto tmp = state.corner##d;                                                \
@@ -152,6 +153,30 @@ Rotation move_to_rotation(Move move) {
     state.corner##c = state.corner##b;                                         \
     state.corner##b = state.corner##a;                                         \
     state.corner##a = tmp;                                                     \
+    state.corner##a = rotate[state.corner##a][rotation];                       \
+    state.corner##b = rotate[state.corner##b][rotation];                       \
+    state.corner##c = rotate[state.corner##c][rotation];                       \
+    state.corner##d = rotate[state.corner##d][rotation];                       \
+  }
+#define ROTATEP_EDGES(a, b, c, d) ROTATE_EDGES(d, c, b, a)
+#define ROTATEP_CORNERS(a, b, c, d) ROTATE_CORNERS(d, c, b, a)
+#define ROTATE2_EDGES(a, b, c, d)                                              \
+  {                                                                            \
+    auto tmp = state.edge##a;                                                  \
+    state.edge##a = state.edge##c;                                             \
+    state.edge##c = tmp;                                                       \
+    tmp = state.edge##b;                                                       \
+    state.edge##b = state.edge##d;                                             \
+    state.edge##d = tmp;                                                       \
+  }
+#define ROTATE2_CORNERS(a, b, c, d)                                            \
+  {                                                                            \
+    auto tmp = state.corner##a;                                                \
+    state.corner##a = state.corner##c;                                         \
+    state.corner##c = tmp;                                                     \
+    tmp = state.corner##b;                                                     \
+    state.corner##b = state.corner##d;                                         \
+    state.corner##d = tmp;                                                     \
     state.corner##a = rotate[state.corner##a][rotation];                       \
     state.corner##b = rotate[state.corner##b][rotation];                       \
     state.corner##c = rotate[state.corner##c][rotation];                       \
@@ -165,27 +190,60 @@ State make_move(State state, Move move) {
     ROTATE_EDGES(3, 6, 11, 8);
     ROTATE_CORNERS(2, 6, 8, 4);
   case MOVE_RP:
+    ROTATEP_EDGES(3, 6, 11, 8);
+    ROTATEP_CORNERS(2, 6, 8, 4);
   case MOVE_R2:
+    ROTATE2_EDGES(3, 6, 11, 8);
+    ROTATE2_CORNERS(2, 6, 8, 4);
   case MOVE_L:
+    ROTATE_EDGES(2, 7, 10, 5);
+    ROTATE_CORNERS(1, 3, 7, 5);
   case MOVE_LP:
+    ROTATEP_EDGES(2, 7, 10, 5);
+    ROTATEP_CORNERS(1, 3, 7, 5);
   case MOVE_L2:
+    ROTATE2_EDGES(2, 7, 10, 5);
+    ROTATE2_CORNERS(1, 3, 7, 5);
   case MOVE_F:
+    ROTATE_EDGES(4, 8, 12, 7);
+    ROTATE_CORNERS(3, 4, 8, 7);
   case MOVE_FP:
+    ROTATEP_EDGES(4, 8, 12, 7);
+    ROTATEP_CORNERS(3, 4, 8, 7);
   case MOVE_F2:
+    ROTATE2_EDGES(4, 8, 12, 7);
+    ROTATE2_CORNERS(3, 4, 8, 7);
   case MOVE_B:
+    ROTATE_EDGES(1, 5, 9, 6);
+    ROTATE_CORNERS(1, 5, 6, 2);
   case MOVE_BP:
+    ROTATEP_EDGES(1, 5, 9, 6);
+    ROTATEP_CORNERS(1, 5, 6, 2);
   case MOVE_B2:
+    ROTATE2_EDGES(1, 5, 9, 6);
+    ROTATE2_CORNERS(1, 5, 6, 2);
   case MOVE_U:
+    ROTATE_EDGES(1, 3, 4, 2);
+    ROTATE_CORNERS(1, 2, 4, 3);
   case MOVE_UP:
+    ROTATEP_EDGES(1, 3, 4, 2);
+    ROTATEP_CORNERS(1, 2, 4, 3);
   case MOVE_U2:
+    ROTATE2_EDGES(1, 3, 4, 2);
+    ROTATE2_CORNERS(1, 2, 4, 3);
   case MOVE_D:
+    ROTATE_EDGES(11, 9, 10, 12);
+    ROTATE_CORNERS(6, 5, 7, 8);
   case MOVE_DP:
+    ROTATEP_EDGES(11, 9, 10, 12);
+    ROTATEP_CORNERS(6, 5, 7, 8);
   case MOVE_D2:
+    ROTATE2_EDGES(11, 9, 10, 12);
+    ROTATE2_CORNERS(6, 5, 7, 8);
   case MOVE_END:
     throw;
   }
+  return state;
 }
-
-static_assert(sizeof(State) == 16);
 
 int main() { return 0; }
