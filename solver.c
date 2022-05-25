@@ -420,15 +420,16 @@ void output_moves_to(State *table, const State *state) {
   if (state->depth == 1)
     return;
   Move reversed = reverse_move(state->prev_move);
-  printf("%s ", move_to_string(reversed));
   State moved = make_move(*state, reversed);
+  printf("%s ", move_to_string(reversed));
   output_moves_to(table, get(table, &moved));
 }
 
 void output_moves_from(State *table, const State *state) {
   if (state->depth == 1)
     return;
-  State moved = make_move(*state, reverse_move(state->prev_move));
+  Move reversed = reverse_move(state->prev_move);
+  State moved = make_move(*state, reversed);
   output_moves_from(table, get(table, &moved));
   printf("%s ", move_to_string(state->prev_move));
 }
@@ -476,8 +477,12 @@ int main() {
 
   State scrambled = solved;
   srand(time(NULL));
-  for (int i = 0; i < 10; i++)
-    scrambled = make_move(scrambled, rand() % (MOVE_END + 1));
+  for (int i = 0; i < 12; i++) {
+    Move move = rand() % (MOVE_END + 1);
+    scrambled = make_move(scrambled, move);
+    printf("%s ", move_to_string(move));
+  }
+  printf("\n");
   scrambled.depth = 1;
   scrambled.prev_move = 0;
 
@@ -490,7 +495,7 @@ int main() {
       State *table = tables[table_i];
       for (size_t i = 0; i < N; i++) {
         if (table[i].depth == depth) {
-          for (unsigned char move = 0; move <= MOVE_END; move++) {
+          for (Move move = 0; move <= MOVE_END; move++) {
             State next = make_move(table[i], move);
             if (get(table, &next))
               continue;
