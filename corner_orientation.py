@@ -29,10 +29,15 @@ def rot3(pos, cycle):
     return rot(rot(rot(pos, cycle), cycle), cycle)
 
 
+def rot2(pos, cycle):
+    return rot(rot(pos, cycle), cycle)
+
+
 def turns(pos):
     for r in (R, U, F):
         yield rot(pos, r)
         yield rot3(pos, r)
+        yield rot2(pos, r)
 
 
 orientations = set()
@@ -49,5 +54,5 @@ for orientation in orientations:
     print(
         *[orientations.index("".join(pos))
           for pos in turns(list(orientation))],
-        sep="\t"
+        sep=", "
     )
