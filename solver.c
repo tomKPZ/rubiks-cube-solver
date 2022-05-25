@@ -400,7 +400,7 @@ void output_state(const State *state) {
 const size_t N = 128 * 1024 * 1024;
 
 State *get(State *table, const State *state) {
-  for (size_t bucket = hash_state(state) % N; table[bucket].prev_move;
+  for (size_t bucket = hash_state(state) % N; table[bucket].depth;
        bucket = (bucket + 1) % N) {
     if (cmp_state(state, &table[bucket]) == 0)
       return &table[bucket];
@@ -411,7 +411,7 @@ State *get(State *table, const State *state) {
 void insert(State *table, const State *state) {
   size_t hash = hash_state(state);
   size_t bucket = hash % N;
-  while (table[bucket].prev_move)
+  while (table[bucket].depth)
     bucket = (bucket + 1) % N;
   table[bucket] = *state;
 }
