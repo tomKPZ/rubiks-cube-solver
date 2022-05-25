@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 using RotationState = unsigned char;
@@ -381,9 +382,8 @@ void output_state(const State &state) {
 }
 
 constexpr size_t N = 1024 * 1024;
-State *table = nullptr;
 
-State *get(const State &state) {
+State *get(State *table, const State &state) {
   for (auto bucket = hash_state(state) % N; table[bucket].prev_move;
        bucket = (bucket + 1) % N) {
     if (cmp_state(state, table[bucket]) == 0)
@@ -392,38 +392,29 @@ State *get(const State &state) {
   return nullptr;
 }
 
-void insert(const State &state) {
+State *insert(State *table, const State &state) {
   auto hash = hash_state(state);
   auto bucket = hash % N;
   while (table[bucket].prev_move)
     bucket = (bucket + 1) % N;
   table[bucket] = state;
+  return table + bucket;
 }
 
-void output_moves_to(const State &state) {
-  if (state.prev_move == 1)
+void output_moves_to(State *table, const State &state) {
+  if (!state.depth)
     return;
   Move reversed = reverse_move(state.prev_move);
   printf("%s ", move_to_string(reversed));
-  output_moves_to(*get(make_move(state, reversed)));
+  output_moves_to(table, *get(table, make_move(state, reversed)));
 }
 
-bool dfs(const State &state, int depth) {
-  if (State *match = get(state)) {
-    output_moves_to(*match);
-    printf("\n");
-    return true;
-  }
-  if (!depth)
-    return false;
-  for (unsigned char move = MOVE_BEGIN; move <= MOVE_END; move++) {
-    State next = make_move(state, static_cast<Move>(move));
-    if (dfs(next, depth - 1)) {
-      printf("%s ", move_to_string(static_cast<Move>(move)));
-      return true;
-    }
-  }
-  return false;
+void output_moves_from(State *table, const State &state) {
+  if (!state.depth)
+    return;
+  output_moves_from(
+      table, *get(table, make_move(state, reverse_move(state.prev_move))));
+  printf("%s ", move_to_string(state.prev_move));
 }
 
 int main() {
@@ -466,16 +457,14 @@ int main() {
       .prev_move = static_cast<Move>(1),
   };
 
-  table = new State[N];
-  memset(table, 0, sizeof(State) * N);
-
-  insert(solved);
+  auto *table1 = static_cast<State *>(calloc(N, sizeof(State)));
+  insert(table1, solved);
   for (size_t depth = 0; depth < 4; depth++) {
     for (size_t i = 0; i < N; i++) {
-      if (table[i].prev_move && table[i].depth == depth) {
+      if (table1[i].prev_move && table1[i].depth == depth) {
         for (unsigned char move = MOVE_BEGIN; move <= MOVE_END; move++) {
-          State state = make_move(table[i], static_cast<Move>(move));
-          insert(state);
+          State state = make_move(table1[i], static_cast<Move>(move));
+          insert(table1, state);
         }
       }
     }
@@ -486,13 +475,29 @@ int main() {
   scrambled = make_move(scrambled, MOVE_U);
   scrambled = make_move(scrambled, MOVE_RP);
   scrambled = make_move(scrambled, MOVE_UP);
-  for (int depth = 0; true; depth++) {
-    printf("dfs %d\n", depth);
-    if (dfs(scrambled, depth)) {
-      printf("\n");
-      return 0;
+  scrambled = make_move(scrambled, MOVE_R);
+  scrambled = make_move(scrambled, MOVE_U);
+  scrambled = make_move(scrambled, MOVE_RP);
+  scrambled = make_move(scrambled, MOVE_UP);
+  scrambled.depth = 0;
+  scrambled.prev_move = static_cast<Move>(1);
+
+  auto *table2 = static_cast<State *>(calloc(N, sizeof(State)));
+  insert(table2, scrambled);
+  for (size_t depth = 0; true; depth++) {
+    for (size_t i = 0; i < N; i++) {
+      if (table2[i].prev_move && table2[i].depth == depth) {
+        for (unsigned char move = MOVE_BEGIN; move <= MOVE_END; move++) {
+          State state = make_move(table2[i], static_cast<Move>(move));
+          State *inserted = insert(table2, state);
+          if (State *match = get(table1, state)) {
+            output_moves_to(table1, *match);
+            output_moves_from(table2, *inserted);
+            printf("\n");
+            return 0;
+          }
+        }
+      }
     }
   }
-
-  return 0;
 }
