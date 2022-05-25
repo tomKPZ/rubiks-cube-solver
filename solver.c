@@ -468,6 +468,7 @@ int main() {
       .edge10_parity = false,
       .edge11_parity = false,
       .edge12_parity = false,
+      .unused = 0,
 
       .depth = 1,
       .prev_move = 0,
