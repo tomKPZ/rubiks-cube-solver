@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 using RotationState = unsigned char;
 
@@ -18,7 +19,8 @@ enum Rotation : unsigned char {
 };
 
 enum Move : unsigned char {
-  MOVE_R = 0,
+  MOVE_BEGIN = 2,
+  MOVE_R = MOVE_BEGIN,
   MOVE_RP,
   MOVE_R2,
   MOVE_L,
@@ -36,10 +38,10 @@ enum Move : unsigned char {
   MOVE_B,
   MOVE_BP,
   MOVE_B2,
-  MOVE_END
+  MOVE_END = MOVE_B2,
 };
 
-struct __attribute__((packed)) State {
+struct __attribute__((packed)) __attribute__((aligned(16))) State {
   RotationState corner1 : 5;
   RotationState corner2 : 5;
   RotationState corner3 : 5;
@@ -143,8 +145,6 @@ Rotation move_to_rotation(Move move) {
     return ROTATE_U;
   case MOVE_D2:
     return ROTATE_U2;
-  case MOVE_END:
-    throw;
   }
 }
 
@@ -272,8 +272,6 @@ State make_move(State state, Move move) {
     ROTATE2_EDGES(11, 9, 10, 12);
     ROTATE2_CORNERS(6, 5, 7, 8);
     break;
-  case MOVE_END:
-    throw;
   }
   state.prev_move = move;
   state.depth++;
@@ -296,7 +294,7 @@ void output_state(const State &state) {
 }
 
 int main() {
-  State state{
+  State solved{
       .corner1 = 0,
       .corner2 = 0,
       .corner3 = 0,
@@ -332,7 +330,33 @@ int main() {
       .edge12_parity = false,
 
       .depth = 0,
-      .prev_move = MOVE_END,
+      .prev_move = static_cast<Move>(1),
   };
+
+  constexpr size_t N = 1024 * 1024;
+
+  State *table = new State[N];
+  memset(table, 0, sizeof(State) * N);
+
+  auto insert = [&](const State &state) {
+    auto hash = hash_state(state);
+    auto bucket = hash % N;
+    while (table[bucket].prev_move)
+      bucket = (bucket + 1) % N;
+    table[bucket] = state;
+  };
+
+  insert(solved);
+  for (size_t depth = 0; depth < 4; depth++) {
+    for (size_t i = 0; i < N; i++) {
+      if (table[i].prev_move && table[i].depth == depth) {
+        for (unsigned char move = MOVE_BEGIN; move <= MOVE_END; move++) {
+          State state = make_move(table[i], static_cast<Move>(move));
+          insert(state);
+        }
+      }
+    }
+  }
+
   return 0;
 }
