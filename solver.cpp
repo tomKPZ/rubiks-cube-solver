@@ -107,6 +107,93 @@ uint64_t hash_state(const State &state) {
   return hash;
 }
 
+int cmp_state(const State &state1, const State &state2) {
+  static_assert(offsetof(State, depth) == 14, "");
+  return memcmp(&state1, &state2, 14);
+}
+
+Move reverse_move(Move move) {
+  switch (move) {
+  case MOVE_R:
+    return MOVE_RP;
+  case MOVE_RP:
+    return MOVE_R;
+  case MOVE_R2:
+    return MOVE_R2;
+  case MOVE_L:
+    return MOVE_LP;
+  case MOVE_LP:
+    return MOVE_L;
+  case MOVE_L2:
+    return MOVE_L2;
+  case MOVE_F:
+    return MOVE_FP;
+  case MOVE_FP:
+    return MOVE_F;
+  case MOVE_F2:
+    return MOVE_F2;
+  case MOVE_B:
+    return MOVE_BP;
+  case MOVE_BP:
+    return MOVE_B;
+  case MOVE_B2:
+    return MOVE_B2;
+  case MOVE_U:
+    return MOVE_UP;
+  case MOVE_UP:
+    return MOVE_U;
+  case MOVE_U2:
+    return MOVE_U2;
+  case MOVE_D:
+    return MOVE_DP;
+  case MOVE_DP:
+    return MOVE_D;
+  case MOVE_D2:
+    return MOVE_D2;
+  }
+}
+
+const char *move_to_string(Move move) {
+  switch (move) {
+  case MOVE_R:
+    return "R";
+  case MOVE_RP:
+    return "R'";
+  case MOVE_R2:
+    return "R2";
+  case MOVE_L:
+    return "L";
+  case MOVE_LP:
+    return "L'";
+  case MOVE_L2:
+    return "L2";
+  case MOVE_F:
+    return "F";
+  case MOVE_FP:
+    return "F'";
+  case MOVE_F2:
+    return "F2";
+  case MOVE_B:
+    return "B";
+  case MOVE_BP:
+    return "B'";
+  case MOVE_B2:
+    return "B2";
+  case MOVE_U:
+    return "U";
+  case MOVE_UP:
+    return "U'";
+  case MOVE_U2:
+    return "U2";
+  case MOVE_D:
+    return "D";
+  case MOVE_DP:
+    return "D'";
+  case MOVE_D2:
+    return "D2";
+  }
+}
+
 Rotation move_to_rotation(Move move) {
   switch (move) {
   case MOVE_R:
@@ -293,8 +380,54 @@ void output_state(const State &state) {
   printf("%d %d\n", state.depth, state.prev_move);
 }
 
+constexpr size_t N = 1024 * 1024;
+State *table = nullptr;
+
+State *get(const State &state) {
+  for (auto bucket = hash_state(state) % N; !table[bucket].prev_move;
+       bucket = (bucket + 1) % N) {
+    if (cmp_state(state, table[bucket]) == 0)
+      return &table[bucket];
+  }
+  return nullptr;
+}
+
+void insert(const State &state) {
+  auto hash = hash_state(state);
+  auto bucket = hash % N;
+  while (table[bucket].prev_move)
+    bucket = (bucket + 1) % N;
+  table[bucket] = state;
+}
+
+void output_moves_to(const State &state) {
+  if (state.prev_move == 1)
+    return;
+  Move reversed = reverse_move(state.prev_move);
+  printf("%s ", move_to_string(reversed));
+  output_moves_to(*get(make_move(state, reversed)));
+}
+
+bool dfs(const State &state, int depth) {
+  if (State *match = get(state)) {
+    output_moves_to(*match);
+    printf("\n");
+    return true;
+  }
+  if (!depth)
+    return false;
+  for (unsigned char move = MOVE_BEGIN; move <= MOVE_END; move++) {
+    State next = make_move(state, static_cast<Move>(move));
+    if (dfs(next, depth - 1)) {
+      printf("%s ", move_to_string(static_cast<Move>(move)));
+      return true;
+    }
+  }
+  return false;
+}
+
 int main() {
-  State solved{
+  const State solved{
       .corner1 = 0,
       .corner2 = 0,
       .corner3 = 0,
@@ -333,18 +466,8 @@ int main() {
       .prev_move = static_cast<Move>(1),
   };
 
-  constexpr size_t N = 1024 * 1024;
-
-  State *table = new State[N];
+  table = new State[N];
   memset(table, 0, sizeof(State) * N);
-
-  auto insert = [&](const State &state) {
-    auto hash = hash_state(state);
-    auto bucket = hash % N;
-    while (table[bucket].prev_move)
-      bucket = (bucket + 1) % N;
-    table[bucket] = state;
-  };
 
   insert(solved);
   for (size_t depth = 0; depth < 4; depth++) {
@@ -355,6 +478,13 @@ int main() {
           insert(state);
         }
       }
+    }
+  }
+
+  for (int depth = 0; true; depth++) {
+    if (dfs(solved, depth)) {
+      printf("\n");
+      return 0;
     }
   }
 
