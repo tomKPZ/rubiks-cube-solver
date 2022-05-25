@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 typedef unsigned char RotationState;
 
@@ -21,8 +22,7 @@ typedef enum {
 } Rotation;
 
 typedef enum {
-  MOVE_BEGIN = 2,
-  MOVE_R = MOVE_BEGIN,
+  MOVE_R = 0,
   MOVE_RP,
   MOVE_R2,
   MOVE_L,
@@ -470,24 +470,15 @@ int main() {
       .edge12_parity = false,
 
       .depth = 1,
-      .prev_move = 1,
+      .prev_move = 0,
   };
 
   State scrambled = solved;
-  scrambled = make_move(scrambled, MOVE_R);
-  scrambled = make_move(scrambled, MOVE_U);
-  scrambled = make_move(scrambled, MOVE_RP);
-  scrambled = make_move(scrambled, MOVE_UP);
-  scrambled = make_move(scrambled, MOVE_R);
-  scrambled = make_move(scrambled, MOVE_U);
-  scrambled = make_move(scrambled, MOVE_RP);
-  scrambled = make_move(scrambled, MOVE_UP);
-  scrambled = make_move(scrambled, MOVE_R);
-  scrambled = make_move(scrambled, MOVE_U);
-  scrambled = make_move(scrambled, MOVE_RP);
-  scrambled = make_move(scrambled, MOVE_UP);
+  srand(time(NULL));
+  for (int i = 0; i < 10; i++)
+    scrambled = make_move(scrambled, rand() % (MOVE_END + 1));
   scrambled.depth = 1;
-  scrambled.prev_move = 1;
+  scrambled.prev_move = 0;
 
   State *table1 = calloc(N, sizeof(State));
   State *table2 = calloc(N, sizeof(State));
@@ -499,7 +490,7 @@ int main() {
       State *table = table_i ? table2 : table1;
       for (size_t i = 0; i < N; i++) {
         if (table[i].depth == depth) {
-          for (unsigned char move = MOVE_BEGIN; move <= MOVE_END; move++) {
+          for (unsigned char move = 0; move <= MOVE_END; move++) {
             State next = make_move(table[i], move);
             if (get(table, &next))
               continue;
