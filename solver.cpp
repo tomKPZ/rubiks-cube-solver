@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <initializer_list>
+
 using RotationState = unsigned char;
 
 enum Rotation : unsigned char {
@@ -381,7 +383,7 @@ void output_state(const State &state) {
   printf("%d %d\n", state.depth, state.prev_move);
 }
 
-constexpr size_t N = 1024 * 1024;
+constexpr size_t N = 128 * 1024 * 1024;
 
 State *get(State *table, const State &state) {
   for (auto bucket = hash_state(state) % N; table[bucket].prev_move;
@@ -392,13 +394,12 @@ State *get(State *table, const State &state) {
   return nullptr;
 }
 
-State *insert(State *table, const State &state) {
+void insert(State *table, const State &state) {
   auto hash = hash_state(state);
   auto bucket = hash % N;
   while (table[bucket].prev_move)
     bucket = (bucket + 1) % N;
   table[bucket] = state;
-  return table + bucket;
 }
 
 void output_moves_to(State *table, const State &state) {
@@ -457,20 +458,11 @@ int main() {
       .prev_move = static_cast<Move>(1),
   };
 
-  auto *table1 = static_cast<State *>(calloc(N, sizeof(State)));
-  insert(table1, solved);
-  for (size_t depth = 0; depth < 4; depth++) {
-    for (size_t i = 0; i < N; i++) {
-      if (table1[i].prev_move && table1[i].depth == depth) {
-        for (unsigned char move = MOVE_BEGIN; move <= MOVE_END; move++) {
-          State state = make_move(table1[i], static_cast<Move>(move));
-          insert(table1, state);
-        }
-      }
-    }
-  }
-
   State scrambled = solved;
+  scrambled = make_move(scrambled, MOVE_R);
+  scrambled = make_move(scrambled, MOVE_U);
+  scrambled = make_move(scrambled, MOVE_RP);
+  scrambled = make_move(scrambled, MOVE_UP);
   scrambled = make_move(scrambled, MOVE_R);
   scrambled = make_move(scrambled, MOVE_U);
   scrambled = make_move(scrambled, MOVE_RP);
@@ -482,19 +474,24 @@ int main() {
   scrambled.depth = 0;
   scrambled.prev_move = static_cast<Move>(1);
 
+  auto *table1 = static_cast<State *>(calloc(N, sizeof(State)));
   auto *table2 = static_cast<State *>(calloc(N, sizeof(State)));
+  insert(table1, solved);
   insert(table2, scrambled);
+
   for (size_t depth = 0; true; depth++) {
-    for (size_t i = 0; i < N; i++) {
-      if (table2[i].prev_move && table2[i].depth == depth) {
-        for (unsigned char move = MOVE_BEGIN; move <= MOVE_END; move++) {
-          State state = make_move(table2[i], static_cast<Move>(move));
-          State *inserted = insert(table2, state);
-          if (State *match = get(table1, state)) {
-            output_moves_to(table1, *match);
-            output_moves_from(table2, *inserted);
-            printf("\n");
-            return 0;
+    for (auto *table : {table1, table2}) {
+      for (size_t i = 0; i < N; i++) {
+        if (table[i].prev_move && table[i].depth == depth) {
+          for (unsigned char move = MOVE_BEGIN; move <= MOVE_END; move++) {
+            State state = make_move(table[i], static_cast<Move>(move));
+            insert(table, state);
+            if (State *match = get(table == table1 ? table2 : table1, state)) {
+              output_moves_to(table1, *get(table1, *match));
+              output_moves_from(table2, *get(table2, *match));
+              printf("\n");
+              return 0;
+            }
           }
         }
       }
