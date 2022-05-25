@@ -245,6 +245,13 @@ Rotation move_to_rotation(Move move) {
     state.edge##c = state.edge##b;                                             \
     state.edge##b = state.edge##a;                                             \
     state.edge##a = tmp;                                                       \
+  }                                                                            \
+  {                                                                            \
+    auto tmp = state.edge##d##_parity;                                         \
+    state.edge##d##_parity = state.edge##c##_parity;                           \
+    state.edge##c##_parity = state.edge##b##_parity;                           \
+    state.edge##b##_parity = state.edge##a##_parity;                           \
+    state.edge##a##_parity = tmp;                                              \
     state.edge##a##_parity = !state.edge##a##_parity;                          \
     state.edge##b##_parity = !state.edge##b##_parity;                          \
     state.edge##c##_parity = !state.edge##c##_parity;                          \
@@ -272,6 +279,14 @@ Rotation move_to_rotation(Move move) {
     tmp = state.edge##b;                                                       \
     state.edge##b = state.edge##d;                                             \
     state.edge##d = tmp;                                                       \
+  }                                                                            \
+  {                                                                            \
+    auto tmp = state.edge##a##_parity;                                         \
+    state.edge##a##_parity = state.edge##c##_parity;                           \
+    state.edge##c##_parity = tmp;                                              \
+    tmp = state.edge##b##_parity;                                              \
+    state.edge##b##_parity = state.edge##d##_parity;                           \
+    state.edge##d##_parity = tmp;                                              \
   }
 #define ROTATE2_CORNERS(a, b, c, d)                                            \
   {                                                                            \
@@ -484,11 +499,13 @@ int main() {
       for (size_t i = 0; i < N; i++) {
         if (table[i].prev_move && table[i].depth == depth) {
           for (unsigned char move = MOVE_BEGIN; move <= MOVE_END; move++) {
-            State state = make_move(table[i], static_cast<Move>(move));
-            insert(table, state);
-            if (State *match = get(table == table1 ? table2 : table1, state)) {
-              output_moves_to(table1, *get(table1, *match));
-              output_moves_from(table2, *get(table2, *match));
+            State next = make_move(table[i], static_cast<Move>(move));
+            if (get(table, next))
+              continue;
+            insert(table, next);
+            if (State *match = get(table == table1 ? table2 : table1, next)) {
+              output_moves_from(table1, *get(table1, *match));
+              output_moves_to(table2, *get(table2, *match));
               printf("\n");
               return 0;
             }
