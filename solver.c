@@ -416,22 +416,18 @@ void insert(State *table, const State *state) {
   table[bucket] = *state;
 }
 
-void output_moves_to(State *table, const State *state) {
+void output_moves(State *table, const State *state, bool reverse) {
   if (state->depth == 1)
     return;
   Move reversed = reverse_move(state->prev_move);
   State moved = make_move(*state, reversed);
-  printf("%s ", move_to_string(reversed));
-  output_moves_to(table, get(table, &moved));
-}
-
-void output_moves_from(State *table, const State *state) {
-  if (state->depth == 1)
-    return;
-  Move reversed = reverse_move(state->prev_move);
-  State moved = make_move(*state, reversed);
-  output_moves_from(table, get(table, &moved));
-  printf("%s ", move_to_string(state->prev_move));
+  if (reverse) {
+    printf("%s ", move_to_string(reversed));
+    output_moves(table, get(table, &moved), reverse);
+  } else {
+    output_moves(table, get(table, &moved), reverse);
+    printf("%s ", move_to_string(state->prev_move));
+  }
 }
 
 int main() {
@@ -502,8 +498,8 @@ int main() {
             insert(table, &next);
             State *match = get(tables[!table_i], &next);
             if (match) {
-              output_moves_from(tables[1], get(tables[1], match));
-              output_moves_to(tables[0], get(tables[0], match));
+              output_moves(tables[1], get(tables[1], match), false);
+              output_moves(tables[0], get(tables[0], match), true);
               printf("\n");
               return 0;
             }
