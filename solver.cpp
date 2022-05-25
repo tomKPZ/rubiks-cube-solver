@@ -1,6 +1,8 @@
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 
-using RotationState = unsigned int;
+using RotationState = unsigned char;
 
 enum Rotation : unsigned char {
   ROTATE_R = 0,
@@ -37,7 +39,7 @@ enum Move : unsigned char {
   MOVE_END
 };
 
-struct State {
+struct __attribute__((packed)) State {
   RotationState corner1 : 5;
   RotationState corner2 : 5;
   RotationState corner3 : 5;
@@ -51,7 +53,7 @@ struct State {
   unsigned int edge2 : 4;
   unsigned int edge3 : 4;
   unsigned int edge4 : 4;
-  unsigned int edge5 : 5;
+  unsigned int edge5 : 4;
   unsigned int edge6 : 4;
   unsigned int edge7 : 4;
   unsigned int edge8 : 4;
@@ -59,18 +61,18 @@ struct State {
   unsigned int edge10 : 4;
   unsigned int edge11 : 4;
   unsigned int edge12 : 4;
-  bool edge1_parity : 1;
-  bool edge2_parity : 1;
-  bool edge3_parity : 1;
-  bool edge4_parity : 1;
-  bool edge5_parity : 1;
-  bool edge6_parity : 1;
-  bool edge7_parity : 1;
-  bool edge8_parity : 1;
-  bool edge9_parity : 1;
-  bool edge10_parity : 1;
-  bool edge11_parity : 1;
-  bool edge12_parity : 1;
+  bool edge1_parity : 2;
+  bool edge2_parity : 2;
+  bool edge3_parity : 2;
+  bool edge4_parity : 2;
+  bool edge5_parity : 2;
+  bool edge6_parity : 2;
+  bool edge7_parity : 2;
+  bool edge8_parity : 2;
+  bool edge9_parity : 2;
+  bool edge10_parity : 2;
+  bool edge11_parity : 2;
+  bool edge12_parity : 2;
 
   unsigned char depth;
   Move prev_move;
@@ -92,6 +94,16 @@ constexpr RotationState rotate[][ROTATE_END] = {
     {2, 7, 17, 23, 22, 21, 8, 12, 16},  {6, 3, 16, 22, 23, 20, 13, 9, 17},
     {10, 15, 19, 20, 21, 23, 4, 0, 18}, {14, 11, 18, 21, 20, 22, 1, 5, 19},
 };
+
+uint64_t hash_state(const State &state) {
+  static_assert(offsetof(State, depth) == 14, "");
+
+  // djb2
+  uint64_t hash = 5381;
+  for (size_t i = 0; i < 14; i++)
+    hash = hash * 33 + reinterpret_cast<const char *>(&state)[i];
+  return hash;
+}
 
 Rotation move_to_rotation(Move move) {
   switch (move) {
