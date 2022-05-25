@@ -502,8 +502,8 @@ int main() {
             insert(table, &next);
             State *match = get(tables[!table_i], &next);
             if (match) {
-              output_moves_from(tables[0], get(tables[0], match));
-              output_moves_to(tables[1], get(tables[1], match));
+              output_moves_from(tables[1], get(tables[1], match));
+              output_moves_to(tables[0], get(tables[0], match));
               printf("\n");
               return 0;
             }
