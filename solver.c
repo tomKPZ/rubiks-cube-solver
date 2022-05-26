@@ -1,9 +1,11 @@
+#include <linux/mman.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <time.h>
 
 typedef unsigned char RotationState;
@@ -397,7 +399,7 @@ void output_state(const State *state) {
   printf("%d %d\n", state->depth, state->prev_move);
 }
 
-const size_t N = 128 * 1024 * 1024;
+const size_t N = 473lu * 1024 * 1024 * 1024 / 2 / 16;
 
 State *get(State *table, const State *state) {
   for (size_t bucket = hash_state(state) % N; table[bucket].depth;
@@ -408,12 +410,18 @@ State *get(State *table, const State *state) {
   return NULL;
 }
 
+size_t inserted = 0;
+
 void insert(State *table, const State *state) {
   size_t hash = hash_state(state);
   size_t bucket = hash % N;
   while (table[bucket].depth)
     bucket = (bucket + 1) % N;
   table[bucket] = *state;
+  inserted++;
+  if (inserted % (1024 * 1024) == 0) {
+    printf("inserted %zu\n", inserted);
+  }
 }
 
 void output_moves(State *table, const State *state, bool reverse) {
@@ -473,7 +481,7 @@ int main() {
 
   State scrambled = solved;
   srand(time(NULL));
-  for (int i = 0; i < 12; i++) {
+  for (int i = 0; i < 40; i++) {
     Move move = rand() % (MOVE_END + 1);
     scrambled = make_move(scrambled, move);
     printf("%s ", move_to_string(move));
@@ -482,7 +490,13 @@ int main() {
   scrambled.depth = 1;
   scrambled.prev_move = 0;
 
-  State *tables[2] = {calloc(N, sizeof(State)), calloc(N, sizeof(State))};
+  State *ptr = mmap(NULL, N * sizeof(State) * 2, PROT_READ | PROT_WRITE,
+                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE | MAP_HUGETLB |
+                        MAP_HUGE_1GB,
+                    -1, 0);
+  if (ptr == MAP_FAILED)
+    return 1;
+  State *tables[2] = {ptr, ptr + N};
   insert(tables[0], &solved);
   insert(tables[1], &scrambled);
 
