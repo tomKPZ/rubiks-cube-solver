@@ -1,5 +1,6 @@
 #include <linux/mman.h>
 #include <pthread.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -471,10 +472,16 @@ static State *get(State *table, const State *state) {
   }
 }
 
-static void insert(State *table, State *pos, const State *state) {
-  size_t bucket = pos - table;
-  // TODO: compare and swap.
-  table[bucket] = *state;
+static void insert(State *table_state, State *pos, const State *state) {
+  __int128_t *table = (__int128_t *)table_state;
+  __int128_t expected = 0;
+  __int128_t desired = *((__int128 *)state);
+
+  for (size_t bucket = pos - table_state;
+       !__atomic_compare_exchange_n(&table[bucket], &expected, desired, false,
+                                    __ATOMIC_SEQ_CST, __ATOMIC_RELAXED);
+       bucket = (bucket + 1) % N) {
+  }
 }
 
 static void output_moves(State *table, const State *state, bool reverse) {
