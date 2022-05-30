@@ -12,6 +12,15 @@
 typedef unsigned char RotationState;
 
 typedef enum {
+  SIDE_R = 0,
+  SIDE_L,
+  SIDE_F,
+  SIDE_B,
+  SIDE_U,
+  SIDE_D,
+} Side;
+
+typedef enum {
   ROTATE_R = 0,
   ROTATE_RP,
   ROTATE_R2,
@@ -279,6 +288,35 @@ static Rotation move_to_rotation(Move move) {
   }
 }
 
+static Side move_to_side(Move move) {
+  switch (move) {
+  case MOVE_R:
+  case MOVE_RP:
+  case MOVE_R2:
+    return SIDE_R;
+  case MOVE_L:
+  case MOVE_LP:
+  case MOVE_L2:
+    return SIDE_L;
+  case MOVE_F:
+  case MOVE_FP:
+  case MOVE_F2:
+    return SIDE_F;
+  case MOVE_B:
+  case MOVE_BP:
+  case MOVE_B2:
+    return SIDE_B;
+  case MOVE_U:
+  case MOVE_UP:
+  case MOVE_U2:
+    return SIDE_U;
+  case MOVE_D:
+  case MOVE_DP:
+  case MOVE_D2:
+    return SIDE_D;
+  }
+}
+
 #define ROTATE_EDGES(a, b, c, d)                                               \
   {                                                                            \
     unsigned int tmp = state.edge##d;                                          \
@@ -435,18 +473,12 @@ static State *get(State *table, const State *state) {
   return NULL;
 }
 
-size_t inserted = 0;
-
 static void insert(State *table, const State *state) {
   size_t hash = hash_state(state);
   size_t bucket = hash % N;
   while (table[bucket].depth)
     bucket = (bucket + 1) % N;
   table[bucket] = *state;
-  inserted++;
-  if (inserted % (16 * 1024 * 1024) == 0) {
-    printf("inserted %zu\n", inserted);
-  }
 }
 
 static void output_moves(State *table, const State *state, bool reverse) {
@@ -483,7 +515,10 @@ static void *task(void *args) {
   State *table = tables[table_i];
   for (size_t i = range_begin; i < range_end; i++) {
     if (table[i].depth == depth) {
+      Side prev_side = move_to_side(table[i].prev_move);
       for (Move move = 0; move <= MOVE_END; move++) {
+        if (depth > 1 && prev_side == move_to_side(move))
+          continue;
         State next = make_move(table[i], move);
         if (get(table, &next))
           continue;
