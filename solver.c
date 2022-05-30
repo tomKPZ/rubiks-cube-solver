@@ -533,8 +533,8 @@ static void *task(void *args) {
   return NULL;
 }
 
-int main() {
-  State scrambled = kSolved;
+State scramble(const State *state) {
+  State scrambled = *state;
   srand(time(NULL));
   for (int i = 0; i < 13; i++) {
     Move move = rand() % (MOVE_END + 1);
@@ -544,14 +544,20 @@ int main() {
   printf("\n");
   scrambled.depth = 1;
   scrambled.prev_move = 0;
+  return scrambled;
+}
 
-  State *ptr = mmap(NULL, N * sizeof(State) * 2, PROT_READ | PROT_WRITE,
+int main() {
+  State *mem = mmap(NULL, N * sizeof(State) * 2, PROT_READ | PROT_WRITE,
                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE | MAP_HUGETLB |
                         MAP_HUGE_1GB,
                     -1, 0);
-  if (ptr == MAP_FAILED)
+  if (mem == MAP_FAILED)
     return 1;
-  State *tables[2] = {ptr, ptr + N};
+
+  State scrambled = scramble(&kSolved);
+
+  State *tables[2] = {mem, mem + N};
   insert(tables[0], get(tables[0], &kSolved), &kSolved);
   insert(tables[1], get(tables[1], &scrambled), &scrambled);
 
