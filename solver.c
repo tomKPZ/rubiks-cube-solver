@@ -465,19 +465,15 @@ static State make_move(State state, Move move) {
 const size_t N = 1lu * 1024 * 1024 * 1024 / 2 / 16;
 
 static State *get(State *table, const State *state) {
-  for (size_t bucket = hash_state(state) % N; table[bucket].depth;
-       bucket = (bucket + 1) % N) {
-    if (cmp_state(state, &table[bucket]) == 0)
+  for (size_t bucket = hash_state(state) % N; true; bucket = (bucket + 1) % N) {
+    if (!table[bucket].depth || cmp_state(state, &table[bucket]) == 0)
       return &table[bucket];
   }
-  return NULL;
 }
 
-static void insert(State *table, const State *state) {
-  size_t hash = hash_state(state);
-  size_t bucket = hash % N;
-  while (table[bucket].depth)
-    bucket = (bucket + 1) % N;
+static void insert(State *table, State *pos, const State *state) {
+  size_t bucket = pos - table;
+  // TODO: compare and swap.
   table[bucket] = *state;
 }
 
@@ -520,11 +516,12 @@ static void *task(void *args) {
         if (depth > 1 && prev_side == move_to_side(move))
           continue;
         State next = make_move(table[i], move);
-        if (get(table, &next))
+        State *pos = get(table, &next);
+        if (pos->depth)
           continue;
-        insert(table, &next);
+        insert(table, pos, &next);
         State *match = get(tables[!table_i], &next);
-        if (match) {
+        if (match->depth) {
           output_moves(tables[1], get(tables[1], match), false);
           output_moves(tables[0], get(tables[0], match), true);
           printf("\n");
@@ -555,8 +552,8 @@ int main() {
   if (ptr == MAP_FAILED)
     return 1;
   State *tables[2] = {ptr, ptr + N};
-  insert(tables[0], &kSolved);
-  insert(tables[1], &scrambled);
+  insert(tables[0], get(tables[0], &kSolved), &kSolved);
+  insert(tables[1], get(tables[1], &scrambled), &scrambled);
 
   for (size_t depth = 1; true; depth++) {
     for (int table_i = 0; table_i < 2; table_i++) {
