@@ -1,4 +1,5 @@
 #include <linux/mman.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -87,6 +88,46 @@ typedef struct __attribute__((packed)) __attribute__((aligned(16))) {
 
 _Static_assert(sizeof(State) == 16, "");
 _Static_assert(offsetof(State, depth) == 14, "");
+
+static const State kSolved = {
+    .corner1 = 0,
+    .corner2 = 0,
+    .corner3 = 0,
+    .corner4 = 0,
+    .corner5 = 0,
+    .corner6 = 0,
+    .corner7 = 0,
+    .corner8 = 0,
+
+    .edge1 = 0,
+    .edge2 = 1,
+    .edge3 = 2,
+    .edge4 = 3,
+    .edge5 = 4,
+    .edge6 = 5,
+    .edge7 = 6,
+    .edge8 = 7,
+    .edge9 = 8,
+    .edge10 = 9,
+    .edge11 = 10,
+    .edge12 = 11,
+    .edge1_parity = false,
+    .edge2_parity = false,
+    .edge3_parity = false,
+    .edge4_parity = false,
+    .edge5_parity = false,
+    .edge6_parity = false,
+    .edge7_parity = false,
+    .edge8_parity = false,
+    .edge9_parity = false,
+    .edge10_parity = false,
+    .edge11_parity = false,
+    .edge12_parity = false,
+    .unused = 0,
+
+    .depth = 1,
+    .prev_move = 0,
+};
 
 static const RotationState rotate[][ROTATE_END] = {
     {9, 12, 5, 2, 3, 1, 22, 18, 4},     {13, 8, 4, 3, 2, 0, 19, 23, 5},
@@ -403,7 +444,7 @@ static void insert(State *table, const State *state) {
     bucket = (bucket + 1) % N;
   table[bucket] = *state;
   inserted++;
-  if (inserted % (1024 * 1024) == 0) {
+  if (inserted % (16 * 1024 * 1024) == 0) {
     printf("inserted %zu\n", inserted);
   }
 }
@@ -422,48 +463,46 @@ static void output_moves(State *table, const State *state, bool reverse) {
   }
 }
 
+static const int kNumThreads = 32;
+
+typedef struct {
+  State **tables;
+  size_t depth;
+  int table_i;
+  size_t range_begin;
+  size_t range_end;
+} TaskArgs;
+
+static void *task(void *args) {
+  State **tables = ((TaskArgs *)args)->tables;
+  size_t depth = ((TaskArgs *)args)->depth;
+  int table_i = ((TaskArgs *)args)->table_i;
+  size_t range_begin = ((TaskArgs *)args)->range_begin;
+  size_t range_end = ((TaskArgs *)args)->range_end;
+
+  State *table = tables[table_i];
+  for (size_t i = range_begin; i < range_end; i++) {
+    if (table[i].depth == depth) {
+      for (Move move = 0; move <= MOVE_END; move++) {
+        State next = make_move(table[i], move);
+        if (get(table, &next))
+          continue;
+        insert(table, &next);
+        State *match = get(tables[!table_i], &next);
+        if (match) {
+          output_moves(tables[1], get(tables[1], match), false);
+          output_moves(tables[0], get(tables[0], match), true);
+          printf("\n");
+          return NULL;
+        }
+      }
+    }
+  }
+  return NULL;
+}
+
 int main() {
-  const State solved = {
-      .corner1 = 0,
-      .corner2 = 0,
-      .corner3 = 0,
-      .corner4 = 0,
-      .corner5 = 0,
-      .corner6 = 0,
-      .corner7 = 0,
-      .corner8 = 0,
-
-      .edge1 = 0,
-      .edge2 = 1,
-      .edge3 = 2,
-      .edge4 = 3,
-      .edge5 = 4,
-      .edge6 = 5,
-      .edge7 = 6,
-      .edge8 = 7,
-      .edge9 = 8,
-      .edge10 = 9,
-      .edge11 = 10,
-      .edge12 = 11,
-      .edge1_parity = false,
-      .edge2_parity = false,
-      .edge3_parity = false,
-      .edge4_parity = false,
-      .edge5_parity = false,
-      .edge6_parity = false,
-      .edge7_parity = false,
-      .edge8_parity = false,
-      .edge9_parity = false,
-      .edge10_parity = false,
-      .edge11_parity = false,
-      .edge12_parity = false,
-      .unused = 0,
-
-      .depth = 1,
-      .prev_move = 0,
-  };
-
-  State scrambled = solved;
+  State scrambled = kSolved;
   srand(time(NULL));
   for (int i = 0; i < 13; i++) {
     Move move = rand() % (MOVE_END + 1);
@@ -481,28 +520,23 @@ int main() {
   if (ptr == MAP_FAILED)
     return 1;
   State *tables[2] = {ptr, ptr + N};
-  insert(tables[0], &solved);
+  insert(tables[0], &kSolved);
   insert(tables[1], &scrambled);
 
   for (size_t depth = 1; true; depth++) {
     for (int table_i = 0; table_i < 2; table_i++) {
-      State *table = tables[table_i];
-      for (size_t i = 0; i < N; i++) {
-        if (table[i].depth == depth) {
-          for (Move move = 0; move <= MOVE_END; move++) {
-            State next = make_move(table[i], move);
-            if (get(table, &next))
-              continue;
-            insert(table, &next);
-            State *match = get(tables[!table_i], &next);
-            if (match) {
-              output_moves(tables[1], get(tables[1], match), false);
-              output_moves(tables[0], get(tables[0], match), true);
-              printf("\n");
-              return 0;
-            }
-          }
-        }
+      TaskArgs args[kNumThreads];
+      pthread_t tids[kNumThreads];
+      for (int i = 0; i < kNumThreads; i++) {
+        args[i].tables = tables;
+        args[i].depth = depth;
+        args[i].table_i = table_i;
+        args[i].range_begin = i * N / kNumThreads;
+        args[i].range_end = (i + 1) * N / kNumThreads;
+        pthread_create(&tids[i], NULL, task, &args[i]);
+      }
+      for (int i = 0; i < kNumThreads; i++) {
+        pthread_join(tids[i], NULL);
       }
     }
   }
