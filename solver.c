@@ -12,6 +12,12 @@
 
 #include "types.h"
 
+static const int kNumThreads = 32;
+static const int kScrambleDepth = 13;
+
+const size_t kMemGB = 1;
+const size_t kTableSize = kMemGB * 1024 * 1024 * 1024 / 2 / 16;
+
 static const State kSolved = {
     .corner1 = 0,
     .corner2 = 0,
@@ -224,10 +230,9 @@ static State make_move(State state, Move move) {
   return state;
 }
 
-const size_t N = 1lu * 1024 * 1024 * 1024 / 2 / 16;
-
 static State *get(State *table, const State *state) {
-  for (size_t bucket = hash_state(state) % N; true; bucket = (bucket + 1) % N) {
+  for (size_t bucket = hash_state(state) % kTableSize; true;
+       bucket = (bucket + 1) % kTableSize) {
     if (!table[bucket].depth || cmp_state(state, &table[bucket]) == 0)
       return &table[bucket];
   }
@@ -241,7 +246,7 @@ static void insert(State *table_state, State *pos, const State *state) {
   for (size_t bucket = pos - table_state;
        !__atomic_compare_exchange_n(&table[bucket], &expected, desired, false,
                                     __ATOMIC_SEQ_CST, __ATOMIC_RELAXED);
-       bucket = (bucket + 1) % N) {
+       bucket = (bucket + 1) % kTableSize) {
   }
 }
 
@@ -258,8 +263,6 @@ static void output_moves(State *table, const State *state, bool reverse) {
     printf("%s ", move_to_string(state->prev_move));
   }
 }
-
-static const int kNumThreads = 32;
 
 typedef struct {
   State **tables;
@@ -307,7 +310,7 @@ static void *task(void *args) {
 State scramble(const State *state) {
   State scrambled = *state;
   srand(time(NULL));
-  for (int i = 0; i < 13; i++) {
+  for (int i = 0; i < kScrambleDepth; i++) {
     Move move = rand() % (MOVE_END + 1);
     scrambled = make_move(scrambled, move);
     printf("%s ", move_to_string(move));
@@ -319,16 +322,16 @@ State scramble(const State *state) {
 }
 
 int main() {
-  State *mem = mmap(NULL, N * sizeof(State) * 2, PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE | MAP_HUGETLB |
-                        MAP_HUGE_1GB,
-                    -1, 0);
+  State *mem = mmap(
+      NULL, kTableSize * sizeof(State) * 2, PROT_READ | PROT_WRITE,
+      MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE | MAP_HUGETLB | MAP_HUGE_1GB,
+      -1, 0);
   if (mem == MAP_FAILED)
     return 1;
 
   State scrambled = scramble(&kSolved);
 
-  State *tables[2] = {mem, mem + N};
+  State *tables[2] = {mem, mem + kTableSize};
   insert(tables[0], get(tables[0], &kSolved), &kSolved);
   insert(tables[1], get(tables[1], &scrambled), &scrambled);
 
@@ -340,8 +343,8 @@ int main() {
         args[i].tables = tables;
         args[i].depth = depth;
         args[i].table_i = table_i;
-        args[i].range_begin = i * N / kNumThreads;
-        args[i].range_end = (i + 1) * N / kNumThreads;
+        args[i].range_begin = i * kTableSize / kNumThreads;
+        args[i].range_end = (i + 1) * kTableSize / kNumThreads;
         pthread_create(&tids[i], NULL, task, &args[i]);
       }
       for (int i = 0; i < kNumThreads; i++) {
