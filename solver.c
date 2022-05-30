@@ -501,6 +501,8 @@ typedef struct {
   size_t range_end;
 } TaskArgs;
 
+static pthread_mutex_t output_lock = PTHREAD_MUTEX_INITIALIZER;
+
 static void *task(void *args) {
   State **tables = ((TaskArgs *)args)->tables;
   size_t depth = ((TaskArgs *)args)->depth;
@@ -522,10 +524,11 @@ static void *task(void *args) {
         insert(table, pos, &next);
         State *match = get(tables[!table_i], &next);
         if (match->depth) {
+          pthread_mutex_lock(&output_lock);
           output_moves(tables[1], get(tables[1], match), false);
           output_moves(tables[0], get(tables[0], match), true);
           printf("\n");
-          return NULL;
+          exit(0);
         }
       }
     }
