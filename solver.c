@@ -88,7 +88,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(16))) {
 _Static_assert(sizeof(State) == 16, "");
 _Static_assert(offsetof(State, depth) == 14, "");
 
-const RotationState rotate[][ROTATE_END] = {
+static const RotationState rotate[][ROTATE_END] = {
     {9, 12, 5, 2, 3, 1, 22, 18, 4},     {13, 8, 4, 3, 2, 0, 19, 23, 5},
     {17, 20, 7, 1, 0, 3, 10, 14, 6},    {21, 16, 6, 0, 1, 2, 15, 11, 7},
     {8, 13, 1, 7, 6, 5, 18, 22, 0},     {12, 9, 0, 6, 7, 4, 23, 19, 1},
@@ -103,7 +103,7 @@ const RotationState rotate[][ROTATE_END] = {
     {10, 15, 19, 20, 21, 23, 4, 0, 18}, {14, 11, 18, 21, 20, 22, 1, 5, 19},
 };
 
-size_t hash_state(const State *state) {
+static size_t hash_state(const State *state) {
   // djb2
   size_t hash = 5381;
   for (size_t i = 0; i < 14; i++)
@@ -111,11 +111,11 @@ size_t hash_state(const State *state) {
   return hash;
 }
 
-int cmp_state(const State *state1, const State *state2) {
+static int cmp_state(const State *state1, const State *state2) {
   return memcmp(state1, state2, 14);
 }
 
-Move reverse_move(Move move) {
+static Move reverse_move(Move move) {
   switch (move) {
   case MOVE_R:
     return MOVE_RP;
@@ -156,7 +156,7 @@ Move reverse_move(Move move) {
   }
 }
 
-const char *move_to_string(Move move) {
+static const char *move_to_string(Move move) {
   switch (move) {
   case MOVE_R:
     return "R";
@@ -197,7 +197,7 @@ const char *move_to_string(Move move) {
   }
 }
 
-Rotation move_to_rotation(Move move) {
+static Rotation move_to_rotation(Move move) {
   switch (move) {
   case MOVE_R:
     return ROTATE_R;
@@ -302,7 +302,7 @@ Rotation move_to_rotation(Move move) {
     state.corner##d = rotate[state.corner##d][rotation];                       \
   }
 
-State make_move(State state, Move move) {
+static State make_move(State state, Move move) {
   Rotation rotation = move_to_rotation(move);
   switch (move) {
   case MOVE_R:
@@ -383,25 +383,9 @@ State make_move(State state, Move move) {
   return state;
 }
 
-void output_state(const State *state) {
-  printf("%d %d %d %d %d %d %d %d\n", state->corner1, state->corner2,
-         state->corner3, state->corner4, state->corner5, state->corner6,
-         state->corner7, state->corner8);
-  printf("%d %d %d %d %d %d %d %d %d %d %d %d\n", state->edge1, state->edge2,
-         state->edge3, state->edge4, state->edge5, state->edge6, state->edge7,
-         state->edge8, state->edge9, state->edge10, state->edge11,
-         state->edge12);
-  printf("%d %d %d %d %d %d %d %d %d %d %d %d\n", state->edge1_parity,
-         state->edge2_parity, state->edge3_parity, state->edge4_parity,
-         state->edge5_parity, state->edge6_parity, state->edge7_parity,
-         state->edge8_parity, state->edge9_parity, state->edge10_parity,
-         state->edge11_parity, state->edge12_parity);
-  printf("%d %d\n", state->depth, state->prev_move);
-}
+const size_t N = 1lu * 1024 * 1024 * 1024 / 2 / 16;
 
-const size_t N = 473lu * 1024 * 1024 * 1024 / 2 / 16;
-
-State *get(State *table, const State *state) {
+static State *get(State *table, const State *state) {
   for (size_t bucket = hash_state(state) % N; table[bucket].depth;
        bucket = (bucket + 1) % N) {
     if (cmp_state(state, &table[bucket]) == 0)
@@ -412,7 +396,7 @@ State *get(State *table, const State *state) {
 
 size_t inserted = 0;
 
-void insert(State *table, const State *state) {
+static void insert(State *table, const State *state) {
   size_t hash = hash_state(state);
   size_t bucket = hash % N;
   while (table[bucket].depth)
@@ -424,7 +408,7 @@ void insert(State *table, const State *state) {
   }
 }
 
-void output_moves(State *table, const State *state, bool reverse) {
+static void output_moves(State *table, const State *state, bool reverse) {
   if (state->depth == 1)
     return;
   Move reversed = reverse_move(state->prev_move);
@@ -481,7 +465,7 @@ int main() {
 
   State scrambled = solved;
   srand(time(NULL));
-  for (int i = 0; i < 40; i++) {
+  for (int i = 0; i < 13; i++) {
     Move move = rand() % (MOVE_END + 1);
     scrambled = make_move(scrambled, move);
     printf("%s ", move_to_string(move));
