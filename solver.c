@@ -21,35 +21,35 @@ typedef enum {
 } Side;
 
 typedef enum {
-  ROTATE_R = 0,
+  ROTATE_R1 = 0,
   ROTATE_RP,
   ROTATE_R2,
-  ROTATE_U,
+  ROTATE_U1,
   ROTATE_UP,
   ROTATE_U2,
-  ROTATE_F,
+  ROTATE_F1,
   ROTATE_FP,
   ROTATE_F2,
   ROTATE_END,
 } Rotation;
 
 typedef enum {
-  MOVE_R = 0,
+  MOVE_R1 = 0,
   MOVE_RP,
   MOVE_R2,
-  MOVE_L,
+  MOVE_L1,
   MOVE_LP,
   MOVE_L2,
-  MOVE_U,
+  MOVE_U1,
   MOVE_UP,
   MOVE_U2,
-  MOVE_D,
+  MOVE_D1,
   MOVE_DP,
   MOVE_D2,
-  MOVE_F,
+  MOVE_F1,
   MOVE_FP,
   MOVE_F2,
-  MOVE_B,
+  MOVE_B1,
   MOVE_BP,
   MOVE_B2,
   MOVE_END = MOVE_B2,
@@ -167,40 +167,40 @@ static int cmp_state(const State *state1, const State *state2) {
 
 static Move reverse_move(Move move) {
   switch (move) {
-  case MOVE_R:
+  case MOVE_R1:
     return MOVE_RP;
   case MOVE_RP:
-    return MOVE_R;
+    return MOVE_R1;
   case MOVE_R2:
     return MOVE_R2;
-  case MOVE_L:
+  case MOVE_L1:
     return MOVE_LP;
   case MOVE_LP:
-    return MOVE_L;
+    return MOVE_L1;
   case MOVE_L2:
     return MOVE_L2;
-  case MOVE_F:
+  case MOVE_F1:
     return MOVE_FP;
   case MOVE_FP:
-    return MOVE_F;
+    return MOVE_F1;
   case MOVE_F2:
     return MOVE_F2;
-  case MOVE_B:
+  case MOVE_B1:
     return MOVE_BP;
   case MOVE_BP:
-    return MOVE_B;
+    return MOVE_B1;
   case MOVE_B2:
     return MOVE_B2;
-  case MOVE_U:
+  case MOVE_U1:
     return MOVE_UP;
   case MOVE_UP:
-    return MOVE_U;
+    return MOVE_U1;
   case MOVE_U2:
     return MOVE_U2;
-  case MOVE_D:
+  case MOVE_D1:
     return MOVE_DP;
   case MOVE_DP:
-    return MOVE_D;
+    return MOVE_D1;
   case MOVE_D2:
     return MOVE_D2;
   }
@@ -208,37 +208,37 @@ static Move reverse_move(Move move) {
 
 static const char *move_to_string(Move move) {
   switch (move) {
-  case MOVE_R:
+  case MOVE_R1:
     return "R";
   case MOVE_RP:
     return "R'";
   case MOVE_R2:
     return "R2";
-  case MOVE_L:
+  case MOVE_L1:
     return "L";
   case MOVE_LP:
     return "L'";
   case MOVE_L2:
     return "L2";
-  case MOVE_F:
+  case MOVE_F1:
     return "F";
   case MOVE_FP:
     return "F'";
   case MOVE_F2:
     return "F2";
-  case MOVE_B:
+  case MOVE_B1:
     return "B";
   case MOVE_BP:
     return "B'";
   case MOVE_B2:
     return "B2";
-  case MOVE_U:
+  case MOVE_U1:
     return "U";
   case MOVE_UP:
     return "U'";
   case MOVE_U2:
     return "U2";
-  case MOVE_D:
+  case MOVE_D1:
     return "D";
   case MOVE_DP:
     return "D'";
@@ -249,40 +249,40 @@ static const char *move_to_string(Move move) {
 
 static Rotation move_to_rotation(Move move) {
   switch (move) {
-  case MOVE_R:
-    return ROTATE_R;
+  case MOVE_R1:
+    return ROTATE_R1;
   case MOVE_RP:
     return ROTATE_RP;
   case MOVE_R2:
     return ROTATE_R2;
-  case MOVE_L:
+  case MOVE_L1:
     return ROTATE_RP;
   case MOVE_LP:
-    return ROTATE_R;
+    return ROTATE_R1;
   case MOVE_L2:
     return ROTATE_R2;
-  case MOVE_F:
-    return ROTATE_F;
+  case MOVE_F1:
+    return ROTATE_F1;
   case MOVE_FP:
     return ROTATE_FP;
   case MOVE_F2:
     return ROTATE_F2;
-  case MOVE_B:
+  case MOVE_B1:
     return ROTATE_FP;
   case MOVE_BP:
-    return ROTATE_F;
+    return ROTATE_F1;
   case MOVE_B2:
     return ROTATE_F2;
-  case MOVE_U:
-    return ROTATE_U;
+  case MOVE_U1:
+    return ROTATE_U1;
   case MOVE_UP:
     return ROTATE_UP;
   case MOVE_U2:
     return ROTATE_U2;
-  case MOVE_D:
+  case MOVE_D1:
     return ROTATE_UP;
   case MOVE_DP:
-    return ROTATE_U;
+    return ROTATE_U1;
   case MOVE_D2:
     return ROTATE_U2;
   }
@@ -290,27 +290,27 @@ static Rotation move_to_rotation(Move move) {
 
 static Side move_to_side(Move move) {
   switch (move) {
-  case MOVE_R:
+  case MOVE_R1:
   case MOVE_RP:
   case MOVE_R2:
     return SIDE_R;
-  case MOVE_L:
+  case MOVE_L1:
   case MOVE_LP:
   case MOVE_L2:
     return SIDE_L;
-  case MOVE_F:
+  case MOVE_F1:
   case MOVE_FP:
   case MOVE_F2:
     return SIDE_F;
-  case MOVE_B:
+  case MOVE_B1:
   case MOVE_BP:
   case MOVE_B2:
     return SIDE_B;
-  case MOVE_U:
+  case MOVE_U1:
   case MOVE_UP:
   case MOVE_U2:
     return SIDE_U;
-  case MOVE_D:
+  case MOVE_D1:
   case MOVE_DP:
   case MOVE_D2:
     return SIDE_D;
@@ -384,7 +384,7 @@ static Side move_to_side(Move move) {
 static State make_move(State state, Move move) {
   Rotation rotation = move_to_rotation(move);
   switch (move) {
-  case MOVE_R:
+  case MOVE_R1:
     ROTATE_EDGES(3, 6, 11, 8);
     ROTATE_CORNERS(2, 6, 8, 4);
     break;
@@ -396,7 +396,7 @@ static State make_move(State state, Move move) {
     ROTATE2_EDGES(3, 6, 11, 8);
     ROTATE2_CORNERS(2, 6, 8, 4);
     break;
-  case MOVE_L:
+  case MOVE_L1:
     ROTATE_EDGES(2, 7, 10, 5);
     ROTATE_CORNERS(1, 3, 7, 5);
     break;
@@ -408,7 +408,7 @@ static State make_move(State state, Move move) {
     ROTATE2_EDGES(2, 7, 10, 5);
     ROTATE2_CORNERS(1, 3, 7, 5);
     break;
-  case MOVE_F:
+  case MOVE_F1:
     ROTATE_EDGES(4, 8, 12, 7);
     ROTATE_CORNERS(3, 4, 8, 7);
     break;
@@ -420,7 +420,7 @@ static State make_move(State state, Move move) {
     ROTATE2_EDGES(4, 8, 12, 7);
     ROTATE2_CORNERS(3, 4, 8, 7);
     break;
-  case MOVE_B:
+  case MOVE_B1:
     ROTATE_EDGES(1, 5, 9, 6);
     ROTATE_CORNERS(1, 5, 6, 2);
     break;
@@ -432,7 +432,7 @@ static State make_move(State state, Move move) {
     ROTATE2_EDGES(1, 5, 9, 6);
     ROTATE2_CORNERS(1, 5, 6, 2);
     break;
-  case MOVE_U:
+  case MOVE_U1:
     ROTATE_EDGES(1, 3, 4, 2);
     ROTATE_CORNERS(1, 2, 4, 3);
     break;
@@ -444,7 +444,7 @@ static State make_move(State state, Move move) {
     ROTATE2_EDGES(1, 3, 4, 2);
     ROTATE2_CORNERS(1, 2, 4, 3);
     break;
-  case MOVE_D:
+  case MOVE_D1:
     ROTATE_EDGES(11, 9, 10, 12);
     ROTATE_CORNERS(6, 5, 7, 8);
     break;
