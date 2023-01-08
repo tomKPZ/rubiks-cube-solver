@@ -12,6 +12,7 @@ typedef enum {
   SIDE_B,
   SIDE_U,
   SIDE_D,
+  SIDE_END,
 } Side;
 
 typedef enum {
