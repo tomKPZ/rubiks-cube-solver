@@ -56,11 +56,15 @@ def dfs(pos):
     return dict(zip(seen_l, range(len(seen_l))))
 
 
-ROTS = dfs(to_tuple(np.identity(3, dtype=int)))
+I3 = np.identity(3, dtype=int)
+ROTS = dfs(to_tuple(I3))
 FACES = dfs((1, 0, 0))
 EDGES = dfs((1, 1, 0))
 CORNERS = dfs((1, 1, 1))
 FACE_NAMES = dict(zip("BLDURF", FACES))
+INV = dict(
+    (rot, [r for r in ROTS if np.array_equal(np.matmul(r, rot), I3)][0]) for rot in ROTS
+)
 
 
 def pieces_on_face(pieces, face):
@@ -74,6 +78,14 @@ def orbit(pieces, face):
         pieces[to_tuple(np.matmul(np.linalg.matrix_power(M, p), piece))]
         for p in range(4)
     ]
+
+
+def rotation_to_corner(rot, corner):
+    return CORNERS[to_tuple(np.matmul(INV[rot], corner))]
+
+
+def rotation_delta(r1, r2):
+    return ROTS[to_tuple(np.matmul(r2, INV[r1]))]
 
 
 with open("tables.c", "w") as f:
@@ -91,4 +103,14 @@ with open("tables.c", "w") as f:
     for face in FACES:
         corners = orbit(CORNERS, face)
         print("{ %s }," % ", ".join(str(corner) for corner in corners), file=f)
+    print("};", file=f)
+    print("static const Corner rotation_to_corner[24][8] = {", file=f)
+    for rot in ROTS:
+        corners = [rotation_to_corner(rot, corner) for corner in CORNERS]
+        print("{ %s }," % ", ".join(str(corner) for corner in corners), file=f)
+    print("};", file=f)
+    print("static const RotationState rotation_delta[24][24] = {", file=f)
+    for r1 in ROTS:
+        deltas = [rotation_delta(r1, r2) for r2 in ROTS]
+        print("{ %s }," % ", ".join(str(delta) for delta in deltas), file=f)
     print("};", file=f)
