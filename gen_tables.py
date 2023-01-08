@@ -50,5 +50,8 @@ FACES = dfs((1, 0, 0))
 EDGES = dfs((1, 1, 0))
 CORNERS = dfs((1, 1, 1))
 
+print('#include "types.h"')
+print("static const RotationState rotate[][ROTATE_END] = {")
 for r in ROTS:
     print("{ %s }," % ", ".join(str(ROTS.index(pos)) for pos in turns(list(r))))
+print("};")
