@@ -13,15 +13,15 @@ typedef enum {
 } Side;
 
 typedef enum {
-  ROTATE_R1 = 0,
-  ROTATE_RP,
-  ROTATE_R2,
-  ROTATE_U1,
-  ROTATE_UP,
-  ROTATE_U2,
-  ROTATE_F1,
-  ROTATE_FP,
+  ROTATE_F1 = 0,
   ROTATE_F2,
+  ROTATE_FP,
+  ROTATE_R1,
+  ROTATE_R2,
+  ROTATE_RP,
+  ROTATE_U1,
+  ROTATE_U2,
+  ROTATE_UP,
   ROTATE_END,
 } Rotation;
 
