@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from collections import OrderedDict
 
 import numpy as np
 
@@ -54,17 +53,42 @@ def dfs(pos):
 
     aux(pos)
     seen_l = sorted(seen)
-    return OrderedDict(zip(seen_l, range(len(seen_l))))
+    return dict(zip(seen_l, range(len(seen_l))))
 
 
 ROTS = dfs(to_tuple(np.identity(3, dtype=int)))
 FACES = dfs((1, 0, 0))
 EDGES = dfs((1, 1, 0))
 CORNERS = dfs((1, 1, 1))
+FACE_NAMES = dict(zip("BLDURF", FACES))
+
+
+def pieces_on_face(pieces, face):
+    return [edge for edge in pieces if all(f in (0, e) for (f, e) in zip(face, edge))]
+
+
+def orbit(pieces, face):
+    piece = pieces_on_face(pieces, face)[0]
+    M = rotCW(*face)
+    return [
+        pieces[to_tuple(np.matmul(np.linalg.matrix_power(M, p), piece))]
+        for p in range(4)
+    ]
+
 
 with open("tables.c", "w") as f:
     print('#include "types.h"', file=f)
     print("static const RotationState rotate[][ROTATE_END] = {", file=f)
     for r in ROTS:
         print("{ %s }," % ", ".join(str(ROTS[pos]) for pos in turns(r)), file=f)
+    print("};", file=f)
+    print("static const Edge edge_orbits[SIDE_END][4] = {", file=f)
+    for face in FACES:
+        edges = orbit(EDGES, face)
+        print("{ %s }," % ", ".join(str(edge) for edge in edges), file=f)
+    print("};", file=f)
+    print("static const Corner corner_orbits[SIDE_END][4] = {", file=f)
+    for face in FACES:
+        corners = orbit(CORNERS, face)
+        print("{ %s }," % ", ".join(str(corner) for corner in corners), file=f)
     print("};", file=f)
