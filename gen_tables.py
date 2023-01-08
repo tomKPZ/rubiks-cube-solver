@@ -62,8 +62,9 @@ FACES = dfs((1, 0, 0))
 EDGES = dfs((1, 1, 0))
 CORNERS = dfs((1, 1, 1))
 
-print('#include "types.h"')
-print("static const RotationState rotate[][ROTATE_END] = {")
-for r in ROTS:
-    print("{ %s }," % ", ".join(str(ROTS[pos]) for pos in turns(r)))
-print("};")
+with open("tables.c", "w") as f:
+    print('#include "types.h"', file=f)
+    print("static const RotationState rotate[][ROTATE_END] = {", file=f)
+    for r in ROTS:
+        print("{ %s }," % ", ".join(str(ROTS[pos]) for pos in turns(r)), file=f)
+    print("};", file=f)
