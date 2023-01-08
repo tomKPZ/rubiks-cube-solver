@@ -5,23 +5,21 @@ from collections import OrderedDict
 import numpy as np
 
 
-def rotate(v):
-    c, s = 0, -1
-    x, y, z = v
+def rotCW(x, y, z):
     return np.array(
         (
-            (c + x * x * (1 - c), x * y * (1 - c) - z * s, x * z * (1 - c) + y * s),
-            (y * x * (1 - c) + z * s, c + y * y * (1 - c), y * z * (1 - c) - x * s),
-            (z * x * (1 - c) - y * s, z * y * (1 - c) + x * s, c + z * z * (1 - c)),
+            (x * x, x * y + z, x * z - y),
+            (x * y - z, y * y, y * z + x),
+            (x * z + y, y * z - x, z * z),
         ),
         dtype=int,
     )
 
 
 ROT_MATS = [
-    rotate((1, 0, 0)),
-    rotate((0, 1, 0)),
-    rotate((0, 0, 1)),
+    rotCW(1, 0, 0),
+    rotCW(0, 1, 0),
+    rotCW(0, 0, 1),
 ]
 
 
