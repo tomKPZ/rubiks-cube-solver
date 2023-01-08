@@ -9,6 +9,12 @@ typedef uint8_t Edge;
 typedef uint8_t Corner;
 
 typedef enum {
+  CW,
+  HALF,
+  CCW,
+} Turn;
+
+typedef enum {
   SIDE_B = 0,
   SIDE_L,
   SIDE_D,
@@ -63,18 +69,18 @@ typedef struct __attribute__((packed)) __attribute__((aligned(16))) {
   RotationState corner7 : 5;
   RotationState corner8 : 5;
 
-  unsigned int edge1 : 4;
-  unsigned int edge2 : 4;
-  unsigned int edge3 : 4;
-  unsigned int edge4 : 4;
-  unsigned int edge5 : 4;
-  unsigned int edge6 : 4;
-  unsigned int edge7 : 4;
-  unsigned int edge8 : 4;
-  unsigned int edge9 : 4;
-  unsigned int edge10 : 4;
-  unsigned int edge11 : 4;
-  unsigned int edge12 : 4;
+  Edge edge1 : 4;
+  Edge edge2 : 4;
+  Edge edge3 : 4;
+  Edge edge4 : 4;
+  Edge edge5 : 4;
+  Edge edge6 : 4;
+  Edge edge7 : 4;
+  Edge edge8 : 4;
+  Edge edge9 : 4;
+  Edge edge10 : 4;
+  Edge edge11 : 4;
+  Edge edge12 : 4;
   bool edge1_parity : 1;
   bool edge2_parity : 1;
   bool edge3_parity : 1;
@@ -245,5 +251,31 @@ static inline Side move_to_side(Move move) {
   case MOVE_DP:
   case MOVE_D2:
     return SIDE_D;
+  }
+}
+
+static inline Turn move_to_turn(Move move) {
+  switch (move) {
+  case MOVE_R1:
+  case MOVE_L1:
+  case MOVE_F1:
+  case MOVE_B1:
+  case MOVE_U1:
+  case MOVE_D1:
+    return CW;
+  case MOVE_R2:
+  case MOVE_L2:
+  case MOVE_F2:
+  case MOVE_B2:
+  case MOVE_U2:
+  case MOVE_D2:
+    return HALF;
+  case MOVE_RP:
+  case MOVE_LP:
+  case MOVE_FP:
+  case MOVE_BP:
+  case MOVE_UP:
+  case MOVE_DP:
+    return CCW;
   }
 }
