@@ -1,14 +1,27 @@
 #!/usr/bin/env python3
 
+from collections import OrderedDict
+
 import numpy as np
 
-XYZ = [
-    np.array(r, dtype=int)
-    for r in (
-        ((1, 0, 0), (0, 0, 1), (0, -1, 0)),  # X (F)
-        ((0, 0, -1), (0, 1, 0), (1, 0, 0)),  # Y (R)
-        ((0, 1, 0), (-1, 0, 0), (0, 0, 1)),  # Z (U)
+
+def rotate(v):
+    c, s = 0, -1
+    x, y, z = v
+    return np.array(
+        (
+            (c + x * x * (1 - c), x * y * (1 - c) - z * s, x * z * (1 - c) + y * s),
+            (y * x * (1 - c) + z * s, c + y * y * (1 - c), y * z * (1 - c) - x * s),
+            (z * x * (1 - c) - y * s, z * y * (1 - c) + x * s, c + z * z * (1 - c)),
+        ),
+        dtype=int,
     )
+
+
+ROT_MATS = [
+    rotate((1, 0, 0)),
+    rotate((0, 1, 0)),
+    rotate((0, 0, 1)),
 ]
 
 
@@ -24,7 +37,7 @@ def from_tuple(arr):
 
 def turns(pos):
     pos = from_tuple(pos)
-    for r in XYZ:
+    for r in ROT_MATS:
         for _ in range(3):
             pos = np.matmul(r, pos)
             yield to_tuple(pos)
@@ -42,7 +55,8 @@ def dfs(pos):
             aux(turn)
 
     aux(pos)
-    return sorted(seen)
+    seen_l = sorted(seen)
+    return OrderedDict(zip(seen_l, range(len(seen_l))))
 
 
 ROTS = dfs(to_tuple(np.identity(3, dtype=int)))
@@ -53,5 +67,5 @@ CORNERS = dfs((1, 1, 1))
 print('#include "types.h"')
 print("static const RotationState rotate[][ROTATE_END] = {")
 for r in ROTS:
-    print("{ %s }," % ", ".join(str(ROTS.index(pos)) for pos in turns(list(r))))
+    print("{ %s }," % ", ".join(str(ROTS[pos]) for pos in turns(r)))
 print("};")
