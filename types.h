@@ -2,16 +2,19 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
-typedef unsigned char RotationState;
+typedef uint8_t RotationState;
+typedef uint8_t Edge;
+typedef uint8_t Corner;
 
 typedef enum {
-  SIDE_R = 0,
+  SIDE_B = 0,
   SIDE_L,
-  SIDE_F,
-  SIDE_B,
-  SIDE_U,
   SIDE_D,
+  SIDE_U,
+  SIDE_R,
+  SIDE_F,
   SIDE_END,
 } Side;
 
