@@ -73,146 +73,156 @@ static int cmp_state(const State *state1, const State *state2) {
   return memcmp(state1, state2, 14);
 }
 
-#define ROTATE_EDGES(a, b, c, d)                                               \
-  {                                                                            \
-    unsigned int tmp = state.edge##d;                                          \
-    state.edge##d = state.edge##c;                                             \
-    state.edge##c = state.edge##b;                                             \
-    state.edge##b = state.edge##a;                                             \
-    state.edge##a = tmp;                                                       \
-  }                                                                            \
-  {                                                                            \
-    bool tmp = state.edge##d##_parity;                                         \
-    state.edge##d##_parity = state.edge##c##_parity;                           \
-    state.edge##c##_parity = state.edge##b##_parity;                           \
-    state.edge##b##_parity = state.edge##a##_parity;                           \
-    state.edge##a##_parity = tmp;                                              \
-    state.edge##a##_parity = !state.edge##a##_parity;                          \
-    state.edge##b##_parity = !state.edge##b##_parity;                          \
-    state.edge##c##_parity = !state.edge##c##_parity;                          \
-    state.edge##d##_parity = !state.edge##d##_parity;                          \
-  }
-#define ROTATE_CORNERS(a, b, c, d)                                             \
-  {                                                                            \
-    RotationState tmp = state.corner##d;                                       \
-    state.corner##d = state.corner##c;                                         \
-    state.corner##c = state.corner##b;                                         \
-    state.corner##b = state.corner##a;                                         \
-    state.corner##a = tmp;                                                     \
-    state.corner##a = rotate[state.corner##a][rotation];                       \
-    state.corner##b = rotate[state.corner##b][rotation];                       \
-    state.corner##c = rotate[state.corner##c][rotation];                       \
-    state.corner##d = rotate[state.corner##d][rotation];                       \
-  }
-#define ROTATEP_EDGES(a, b, c, d) ROTATE_EDGES(d, c, b, a)
-#define ROTATEP_CORNERS(a, b, c, d) ROTATE_CORNERS(d, c, b, a)
-#define ROTATE2_EDGES(a, b, c, d)                                              \
-  {                                                                            \
-    unsigned int tmp = state.edge##a;                                          \
-    state.edge##a = state.edge##c;                                             \
-    state.edge##c = tmp;                                                       \
-    tmp = state.edge##b;                                                       \
-    state.edge##b = state.edge##d;                                             \
-    state.edge##d = tmp;                                                       \
-  }                                                                            \
-  {                                                                            \
-    bool tmp = state.edge##a##_parity;                                         \
-    state.edge##a##_parity = state.edge##c##_parity;                           \
-    state.edge##c##_parity = tmp;                                              \
-    tmp = state.edge##b##_parity;                                              \
-    state.edge##b##_parity = state.edge##d##_parity;                           \
-    state.edge##d##_parity = tmp;                                              \
-  }
-#define ROTATE2_CORNERS(a, b, c, d)                                            \
-  {                                                                            \
-    RotationState tmp = state.corner##a;                                       \
-    state.corner##a = state.corner##c;                                         \
-    state.corner##c = tmp;                                                     \
-    tmp = state.corner##b;                                                     \
-    state.corner##b = state.corner##d;                                         \
-    state.corner##d = tmp;                                                     \
-    state.corner##a = rotate[state.corner##a][rotation];                       \
-    state.corner##b = rotate[state.corner##b][rotation];                       \
-    state.corner##c = rotate[state.corner##c][rotation];                       \
-    state.corner##d = rotate[state.corner##d][rotation];                       \
-  }
+static inline void unpack(State state, Edge edges[12], bool edge_parities[12],
+                          RotationState corners[8]) {
+  edges[0] = state.edge1;
+  edges[1] = state.edge2;
+  edges[2] = state.edge3;
+  edges[3] = state.edge4;
+  edges[4] = state.edge5;
+  edges[5] = state.edge6;
+  edges[6] = state.edge7;
+  edges[7] = state.edge8;
+  edges[8] = state.edge9;
+  edges[9] = state.edge10;
+  edges[10] = state.edge11;
+  edges[11] = state.edge12;
+  edge_parities[0] = state.edge1_parity;
+  edge_parities[1] = state.edge2_parity;
+  edge_parities[2] = state.edge3_parity;
+  edge_parities[3] = state.edge4_parity;
+  edge_parities[4] = state.edge5_parity;
+  edge_parities[5] = state.edge6_parity;
+  edge_parities[6] = state.edge7_parity;
+  edge_parities[7] = state.edge8_parity;
+  edge_parities[8] = state.edge9_parity;
+  edge_parities[9] = state.edge10_parity;
+  edge_parities[10] = state.edge11_parity;
+  edge_parities[11] = state.edge12_parity;
+  corners[0] = state.corner1;
+  corners[1] = state.corner2;
+  corners[2] = state.corner3;
+  corners[3] = state.corner4;
+  corners[4] = state.corner5;
+  corners[5] = state.corner6;
+  corners[6] = state.corner7;
+  corners[7] = state.corner8;
+}
+
+static inline State pack(State state, const Edge edges[12],
+                         const bool edge_parities[12],
+                         const RotationState corners[8]) {
+  state.edge1 = edges[0];
+  state.edge2 = edges[1];
+  state.edge3 = edges[2];
+  state.edge4 = edges[3];
+  state.edge5 = edges[4];
+  state.edge6 = edges[5];
+  state.edge7 = edges[6];
+  state.edge8 = edges[7];
+  state.edge9 = edges[8];
+  state.edge10 = edges[9];
+  state.edge11 = edges[10];
+  state.edge12 = edges[11];
+  state.edge1_parity = edge_parities[0];
+  state.edge2_parity = edge_parities[1];
+  state.edge3_parity = edge_parities[2];
+  state.edge4_parity = edge_parities[3];
+  state.edge5_parity = edge_parities[4];
+  state.edge6_parity = edge_parities[5];
+  state.edge7_parity = edge_parities[6];
+  state.edge8_parity = edge_parities[7];
+  state.edge9_parity = edge_parities[8];
+  state.edge10_parity = edge_parities[9];
+  state.edge11_parity = edge_parities[10];
+  state.edge12_parity = edge_parities[11];
+  state.corner1 = corners[0];
+  state.corner2 = corners[1];
+  state.corner3 = corners[2];
+  state.corner4 = corners[3];
+  state.corner5 = corners[4];
+  state.corner6 = corners[5];
+  state.corner7 = corners[6];
+  state.corner8 = corners[7];
+  return state;
+}
 
 static State make_move(State state, Move move) {
   Rotation rotation = move_to_rotation(move);
-  switch (move) {
-  case MOVE_R1:
-    ROTATE_EDGES(3, 6, 11, 8);
-    ROTATE_CORNERS(2, 6, 8, 4);
+  Side side = move_to_side(move);
+  Turn turn = move_to_turn(move);
+  const Edge *edge_orbit = edge_orbits[side];
+  const Corner *corner_orbit = corner_orbits[side];
+  Edge edges[12];
+  bool edge_parities[12];
+  RotationState corners[8];
+  unpack(state, edges, edge_parities, corners);
+  Edge tmp_edge;
+  bool tmp_bool;
+  RotationState tmp_rot;
+  switch (turn) {
+  case CW:
+    tmp_edge = edges[edge_orbit[1]];
+    edges[edge_orbit[1]] = edges[edge_orbit[0]];
+    edges[edge_orbit[0]] = edges[edge_orbit[3]];
+    edges[edge_orbit[3]] = edges[edge_orbit[2]];
+    edges[edge_orbit[2]] = tmp_edge;
+
+    tmp_bool = !edge_parities[edge_orbit[1]];
+    edge_parities[edge_orbit[1]] = !edge_parities[edge_orbit[0]];
+    edge_parities[edge_orbit[0]] = !edge_parities[edge_orbit[3]];
+    edge_parities[edge_orbit[3]] = !edge_parities[edge_orbit[2]];
+    edge_parities[edge_orbit[2]] = tmp_bool;
+
+    tmp_rot = rotate[corners[corner_orbit[1]]][rotation];
+    corners[corner_orbit[1]] = rotate[corners[corner_orbit[0]]][rotation];
+    corners[corner_orbit[0]] = rotate[corners[corner_orbit[3]]][rotation];
+    corners[corner_orbit[3]] = rotate[corners[corner_orbit[2]]][rotation];
+    corners[corner_orbit[2]] = tmp_rot;
     break;
-  case MOVE_RP:
-    ROTATEP_EDGES(3, 6, 11, 8);
-    ROTATEP_CORNERS(2, 6, 8, 4);
+  case HALF:
+    tmp_edge = edges[edge_orbit[0]];
+    edges[edge_orbit[0]] = edges[edge_orbit[2]];
+    edges[edge_orbit[2]] = tmp_edge;
+    tmp_edge = edges[edge_orbit[1]];
+    edges[edge_orbit[1]] = edges[edge_orbit[3]];
+    edges[edge_orbit[3]] = tmp_edge;
+
+    tmp_bool = edge_parities[edge_orbit[0]];
+    edge_parities[edge_orbit[0]] = edge_parities[edge_orbit[2]];
+    edge_parities[edge_orbit[2]] = tmp_bool;
+    tmp_bool = edge_parities[edge_orbit[1]];
+    edge_parities[edge_orbit[1]] = edge_parities[edge_orbit[3]];
+    edge_parities[edge_orbit[3]] = tmp_bool;
+
+    tmp_rot = rotate[corners[corner_orbit[0]]][rotation];
+    corners[corner_orbit[0]] = rotate[corners[corner_orbit[2]]][rotation];
+    corners[corner_orbit[2]] = tmp_rot;
+    tmp_rot = rotate[corners[corner_orbit[1]]][rotation];
+    corners[corner_orbit[1]] = rotate[corners[corner_orbit[3]]][rotation];
+    corners[corner_orbit[3]] = tmp_rot;
     break;
-  case MOVE_R2:
-    ROTATE2_EDGES(3, 6, 11, 8);
-    ROTATE2_CORNERS(2, 6, 8, 4);
-    break;
-  case MOVE_L1:
-    ROTATE_EDGES(2, 7, 10, 5);
-    ROTATE_CORNERS(1, 3, 7, 5);
-    break;
-  case MOVE_LP:
-    ROTATEP_EDGES(2, 7, 10, 5);
-    ROTATEP_CORNERS(1, 3, 7, 5);
-    break;
-  case MOVE_L2:
-    ROTATE2_EDGES(2, 7, 10, 5);
-    ROTATE2_CORNERS(1, 3, 7, 5);
-    break;
-  case MOVE_F1:
-    ROTATE_EDGES(4, 8, 12, 7);
-    ROTATE_CORNERS(3, 4, 8, 7);
-    break;
-  case MOVE_FP:
-    ROTATEP_EDGES(4, 8, 12, 7);
-    ROTATEP_CORNERS(3, 4, 8, 7);
-    break;
-  case MOVE_F2:
-    ROTATE2_EDGES(4, 8, 12, 7);
-    ROTATE2_CORNERS(3, 4, 8, 7);
-    break;
-  case MOVE_B1:
-    ROTATE_EDGES(1, 5, 9, 6);
-    ROTATE_CORNERS(1, 5, 6, 2);
-    break;
-  case MOVE_BP:
-    ROTATEP_EDGES(1, 5, 9, 6);
-    ROTATEP_CORNERS(1, 5, 6, 2);
-    break;
-  case MOVE_B2:
-    ROTATE2_EDGES(1, 5, 9, 6);
-    ROTATE2_CORNERS(1, 5, 6, 2);
-    break;
-  case MOVE_U1:
-    ROTATE_EDGES(1, 3, 4, 2);
-    ROTATE_CORNERS(1, 2, 4, 3);
-    break;
-  case MOVE_UP:
-    ROTATEP_EDGES(1, 3, 4, 2);
-    ROTATEP_CORNERS(1, 2, 4, 3);
-    break;
-  case MOVE_U2:
-    ROTATE2_EDGES(1, 3, 4, 2);
-    ROTATE2_CORNERS(1, 2, 4, 3);
-    break;
-  case MOVE_D1:
-    ROTATE_EDGES(11, 9, 10, 12);
-    ROTATE_CORNERS(6, 5, 7, 8);
-    break;
-  case MOVE_DP:
-    ROTATEP_EDGES(11, 9, 10, 12);
-    ROTATEP_CORNERS(6, 5, 7, 8);
-    break;
-  case MOVE_D2:
-    ROTATE2_EDGES(11, 9, 10, 12);
-    ROTATE2_CORNERS(6, 5, 7, 8);
+  case CCW:
+    tmp_edge = edges[edge_orbit[0]];
+    edges[edge_orbit[0]] = edges[edge_orbit[1]];
+    edges[edge_orbit[1]] = edges[edge_orbit[2]];
+    edges[edge_orbit[2]] = edges[edge_orbit[3]];
+    edges[edge_orbit[3]] = tmp_edge;
+
+    tmp_bool = !edge_parities[edge_orbit[0]];
+    edge_parities[edge_orbit[0]] = !edge_parities[edge_orbit[1]];
+    edge_parities[edge_orbit[1]] = !edge_parities[edge_orbit[2]];
+    edge_parities[edge_orbit[2]] = !edge_parities[edge_orbit[3]];
+    edge_parities[edge_orbit[3]] = tmp_bool;
+
+    tmp_rot = rotate[corners[corner_orbit[0]]][rotation];
+    corners[corner_orbit[0]] = rotate[corners[corner_orbit[1]]][rotation];
+    corners[corner_orbit[1]] = rotate[corners[corner_orbit[2]]][rotation];
+    corners[corner_orbit[2]] = rotate[corners[corner_orbit[3]]][rotation];
+    corners[corner_orbit[3]] = tmp_rot;
     break;
   }
+  state = pack(state, edges, edge_parities, corners);
   state.prev_move = move;
   state.depth++;
   return state;
