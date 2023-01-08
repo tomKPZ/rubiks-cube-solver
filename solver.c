@@ -18,7 +18,8 @@ static const int kNumThreads = 32;
 static const int kScrambleDepth = 13;
 
 const size_t kMemGB = 1;
-const size_t kTableSize = kMemGB * 1024 * 1024 * 1024 / 2 / 16;
+const size_t kMemB = kMemGB * 1024 * 1024 * 1024;
+const size_t kTableSize = kMemB / sizeof(State) / 2;
 
 static const State kSolved = {
     .corner1 = 0,
@@ -297,8 +298,13 @@ static void *task(void *args) {
 State scramble(const State *state) {
   State scrambled = *state;
   srand(time(NULL));
+  Side prev = SIDE_END;
   for (int i = 0; i < kScrambleDepth; i++) {
-    Move move = rand() % (MOVE_END + 1);
+    Move move;
+    do {
+      move = rand() % (MOVE_END + 1);
+    } while (move_to_side(move) == prev);
+    prev = move_to_side(move);
     scrambled = make_move(scrambled, move);
     printf("%s ", move_to_string(move));
   }
@@ -309,13 +315,13 @@ State scramble(const State *state) {
 }
 
 int main() {
-  State *mem = mmap(
-      NULL, kTableSize * sizeof(State) * 2, PROT_READ | PROT_WRITE,
-      MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE | MAP_HUGETLB | MAP_HUGE_1GB,
-      -1, 0);
+  State *mem = mmap(NULL, kMemB, PROT_READ | PROT_WRITE,
+                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE | MAP_HUGETLB |
+                        MAP_HUGE_1GB,
+                    -1, 0);
   if (mem == MAP_FAILED) {
     fprintf(stderr, "mmap() failed.  Falling back to malloc().\n");
-    mem = malloc(kTableSize * sizeof(State) * 2);
+    mem = malloc(kMemB);
     if (mem == NULL) {
       fprintf(stderr, "malloc() failed.\n");
       return 1;
