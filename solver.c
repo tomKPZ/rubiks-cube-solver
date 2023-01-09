@@ -15,7 +15,7 @@
 #include "tables.c"
 
 static const int kNumThreads = 32;
-static const int kScrambleDepth = 13;
+static const int kScrambleDepth = 12;
 
 const size_t kMemGB = 1;
 const size_t kMemB = kMemGB * 1024 * 1024 * 1024;
@@ -157,110 +157,65 @@ static State make_move(State state, Move move) {
   bool edge_parities[12];
   RotationState corners[8];
   unpack(state, edges, edge_parities, corners);
-  Edge tmp_edge;
-  bool tmp_bool;
-  RotationState tmp_rot;
-  switch (turn) {
-  case CW:
-    tmp_edge = edges[edge_orbit[1]];
-    edges[edge_orbit[1]] = edges[edge_orbit[0]];
-    edges[edge_orbit[0]] = edges[edge_orbit[3]];
-    edges[edge_orbit[3]] = edges[edge_orbit[2]];
-    edges[edge_orbit[2]] = tmp_edge;
 
-    tmp_bool = !edge_parities[edge_orbit[1]];
-    edge_parities[edge_orbit[1]] = !edge_parities[edge_orbit[0]];
-    edge_parities[edge_orbit[0]] = !edge_parities[edge_orbit[3]];
-    edge_parities[edge_orbit[3]] = !edge_parities[edge_orbit[2]];
-    edge_parities[edge_orbit[2]] = tmp_bool;
+  uint8_t offset = 3 - turn;
+  Edge tmp_edges[4];
+  for (size_t i = 0; i < 4; i++)
+    tmp_edges[i] = edges[edge_orbit[i]];
+  for (size_t i = 0; i < 4; i++)
+    edges[edge_orbit[i]] = tmp_edges[(i + offset) % 4];
 
-    tmp_rot = rotate[corners[corner_orbit[1]]][rotation];
-    corners[corner_orbit[1]] = rotate[corners[corner_orbit[0]]][rotation];
-    corners[corner_orbit[0]] = rotate[corners[corner_orbit[3]]][rotation];
-    corners[corner_orbit[3]] = rotate[corners[corner_orbit[2]]][rotation];
-    corners[corner_orbit[2]] = tmp_rot;
-    break;
-  case HALF:
-    tmp_edge = edges[edge_orbit[0]];
-    edges[edge_orbit[0]] = edges[edge_orbit[2]];
-    edges[edge_orbit[2]] = tmp_edge;
-    tmp_edge = edges[edge_orbit[1]];
-    edges[edge_orbit[1]] = edges[edge_orbit[3]];
-    edges[edge_orbit[3]] = tmp_edge;
+  bool tmp_parities[4];
+  for (size_t i = 0; i < 4; i++)
+    tmp_parities[i] = (offset & 1) ^ edge_parities[edge_orbit[i]];
+  for (size_t i = 0; i < 4; i++)
+    edge_parities[edge_orbit[i]] = tmp_parities[(i + offset) % 4];
 
-    tmp_bool = edge_parities[edge_orbit[0]];
-    edge_parities[edge_orbit[0]] = edge_parities[edge_orbit[2]];
-    edge_parities[edge_orbit[2]] = tmp_bool;
-    tmp_bool = edge_parities[edge_orbit[1]];
-    edge_parities[edge_orbit[1]] = edge_parities[edge_orbit[3]];
-    edge_parities[edge_orbit[3]] = tmp_bool;
+  RotationState tmp_corners[4];
+  for (size_t i = 0; i < 4; i++)
+    tmp_corners[i] = rotate[corners[corner_orbit[i]]][rotation];
+  for (size_t i = 0; i < 4; i++)
+    corners[corner_orbit[i]] = tmp_corners[(i + offset) % 4];
 
-    tmp_rot = rotate[corners[corner_orbit[0]]][rotation];
-    corners[corner_orbit[0]] = rotate[corners[corner_orbit[2]]][rotation];
-    corners[corner_orbit[2]] = tmp_rot;
-    tmp_rot = rotate[corners[corner_orbit[1]]][rotation];
-    corners[corner_orbit[1]] = rotate[corners[corner_orbit[3]]][rotation];
-    corners[corner_orbit[3]] = tmp_rot;
-    break;
-  case CCW:
-    tmp_edge = edges[edge_orbit[0]];
-    edges[edge_orbit[0]] = edges[edge_orbit[1]];
-    edges[edge_orbit[1]] = edges[edge_orbit[2]];
-    edges[edge_orbit[2]] = edges[edge_orbit[3]];
-    edges[edge_orbit[3]] = tmp_edge;
-
-    tmp_bool = !edge_parities[edge_orbit[0]];
-    edge_parities[edge_orbit[0]] = !edge_parities[edge_orbit[1]];
-    edge_parities[edge_orbit[1]] = !edge_parities[edge_orbit[2]];
-    edge_parities[edge_orbit[2]] = !edge_parities[edge_orbit[3]];
-    edge_parities[edge_orbit[3]] = tmp_bool;
-
-    tmp_rot = rotate[corners[corner_orbit[0]]][rotation];
-    corners[corner_orbit[0]] = rotate[corners[corner_orbit[1]]][rotation];
-    corners[corner_orbit[1]] = rotate[corners[corner_orbit[2]]][rotation];
-    corners[corner_orbit[2]] = rotate[corners[corner_orbit[3]]][rotation];
-    corners[corner_orbit[3]] = tmp_rot;
-    break;
-  }
   state = pack(state, edges, edge_parities, corners);
   state.prev_move = move;
   state.depth++;
   return state;
 }
 
-static State delta(State a, State b) {
-  Edge ea[12], eb[12], ec[12];
-  bool pa[12], pb[12], pc[12];
-  RotationState ra[8], rb[8], rc[8];
-  unpack(a, ea, pa, ra);
-  unpack(b, eb, pb, rb);
-
-  Edge ie[12];
-  for (Edge i = 0; i < 12; i++)
-    ie[ea[i]] = i;
-  for (Edge i = 0; i < 12; i++) {
-    ec[i] = ie[eb[i]];
-    pc[i] = eb[i] ^ ea[ie[eb[i]]];
-  }
-
-  Corner ca[8], cb[8];
-  for (Corner i = 0; i < 8; i++) {
-    ca[i] = rotation_to_corner[ra[i]][i];
-    cb[i] = rotation_to_corner[rb[i]][i];
-  }
-  Corner ic[8];
-  for (Corner i = 0; i < 8; i++)
-    ic[ca[i]] = i;
-  for (Corner i = 0; i < 8; i++)
-    rc[i] = rotation_delta[ra[ic[i]]][rb[i]];
-
-  State state = {
-      .unused = 0,
-      .prev_move = 0,
-      .depth = 0,
-  };
-  return pack(state, ec, pc, rc);
-}
+// static State delta(State a, State b) {
+//   Edge ea[12], eb[12], ec[12];
+//   bool pa[12], pb[12], pc[12];
+//   RotationState ra[8], rb[8], rc[8];
+//   unpack(a, ea, pa, ra);
+//   unpack(b, eb, pb, rb);
+//
+//   Edge ie[12];
+//   for (Edge i = 0; i < 12; i++)
+//     ie[ea[i]] = i;
+//   for (Edge i = 0; i < 12; i++) {
+//     ec[i] = ie[eb[i]];
+//     pc[i] = eb[i] ^ ea[ie[eb[i]]];
+//   }
+//
+//   Corner ca[8], cb[8];
+//   for (Corner i = 0; i < 8; i++) {
+//     ca[i] = rotation_to_corner[ra[i]][i];
+//     cb[i] = rotation_to_corner[rb[i]][i];
+//   }
+//   Corner ic[8];
+//   for (Corner i = 0; i < 8; i++)
+//     ic[ca[i]] = i;
+//   for (Corner i = 0; i < 8; i++)
+//     rc[i] = rotation_delta[ra[ic[i]]][rb[i]];
+//
+//   State state = {
+//       .unused = 0,
+//       .prev_move = 0,
+//       .depth = 0,
+//   };
+//   return pack(state, ec, pc, rc);
+// }
 
 static State *get(State *table, const State *state) {
   for (size_t bucket = hash_state(state) % kTableSize; true;
