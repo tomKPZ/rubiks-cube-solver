@@ -88,29 +88,31 @@ def rotation_delta(r1, r2):
     return ROTS[to_tuple(np.matmul(r2, INV[r1]))]
 
 
-with open("tables.c", "w") as f:
+def output_table(sig, arr, f):
+    print("static const %s = {" % sig, file=f)
+    for row in arr:
+        print("{ %s }," % ", ".join(str(x) for x in row), file=f)
+    print("};", file=f)
+
+
+def output(f):
     print('#include "types.h"', file=f)
-    print("static const RotationState rotate[][ROTATE_END] = {", file=f)
-    for r in ROTS:
-        print("{ %s }," % ", ".join(str(ROTS[pos]) for pos in turns(r)), file=f)
-    print("};", file=f)
-    print("static const Edge edge_orbits[SIDE_END][4] = {", file=f)
-    for face in FACES:
-        edges = orbit(EDGES, face)
-        print("{ %s }," % ", ".join(str(edge) for edge in edges), file=f)
-    print("};", file=f)
-    print("static const Corner corner_orbits[SIDE_END][4] = {", file=f)
-    for face in FACES:
-        corners = orbit(CORNERS, face)
-        print("{ %s }," % ", ".join(str(corner) for corner in corners), file=f)
-    print("};", file=f)
-    print("static const Corner rotation_to_corner[24][8] = {", file=f)
-    for rot in ROTS:
-        corners = [rotation_to_corner(rot, corner) for corner in CORNERS]
-        print("{ %s }," % ", ".join(str(corner) for corner in corners), file=f)
-    print("};", file=f)
-    print("static const RotationState rotation_delta[24][24] = {", file=f)
-    for r1 in ROTS:
-        deltas = [rotation_delta(r1, r2) for r2 in ROTS]
-        print("{ %s }," % ", ".join(str(delta) for delta in deltas), file=f)
-    print("};", file=f)
+    rotate = [[ROTS[pos] for pos in turns(r)] for r in ROTS]
+    edge_orbits = [orbit(EDGES, face) for face in FACES]
+    corner_orbits = [orbit(CORNERS, face) for face in FACES]
+    r2c = [[rotation_to_corner(r, corner) for corner in CORNERS] for r in ROTS]
+    rd = [[rotation_delta(r1, r2) for r2 in ROTS] for r1 in ROTS]
+    output_table("RotationState rotate[][ROTATE_END]", rotate, f)
+    output_table("Edge edge_orbits[SIDE_END][4]", edge_orbits, f)
+    output_table("Corner corner_orbits[SIDE_END][4]", corner_orbits, f)
+    output_table("Corner rotation_to_corner[24][8]", r2c, f)
+    output_table("RotationState rotation_delta[24][24]", rd, f)
+
+
+def main():
+    with open("tables.c", "w") as f:
+        output(f)
+
+
+if __name__ == "__main__":
+    main()
