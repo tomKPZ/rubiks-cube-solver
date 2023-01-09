@@ -15,21 +15,21 @@
 #include "tables.c"
 
 static const int kNumThreads = 32;
-static const int kScrambleDepth = 12;
+static const int kScrambleDepth = 4;
 
-const size_t kMemGB = 1;
+const size_t kMemGB = 8;
 const size_t kMemB = kMemGB * 1024 * 1024 * 1024;
-const size_t kTableSize = kMemB / sizeof(State) / 2;
+const size_t kTableSize = kMemB / sizeof(State);
 
 static const State kSolved = {
-    .corner1 = 0,
-    .corner2 = 0,
-    .corner3 = 0,
-    .corner4 = 0,
-    .corner5 = 0,
-    .corner6 = 0,
-    .corner7 = 0,
-    .corner8 = 0,
+    .corner1 = 23,
+    .corner2 = 23,
+    .corner3 = 23,
+    .corner4 = 23,
+    .corner5 = 23,
+    .corner6 = 23,
+    .corner7 = 23,
+    .corner8 = 23,
 
     .edge1 = 0,
     .edge2 = 1,
@@ -183,39 +183,39 @@ static State make_move(State state, Move move) {
   return state;
 }
 
-// static State delta(State a, State b) {
-//   Edge ea[12], eb[12], ec[12];
-//   bool pa[12], pb[12], pc[12];
-//   RotationState ra[8], rb[8], rc[8];
-//   unpack(a, ea, pa, ra);
-//   unpack(b, eb, pb, rb);
-//
-//   Edge ie[12];
-//   for (Edge i = 0; i < 12; i++)
-//     ie[ea[i]] = i;
-//   for (Edge i = 0; i < 12; i++) {
-//     ec[i] = ie[eb[i]];
-//     pc[i] = eb[i] ^ ea[ie[eb[i]]];
-//   }
-//
-//   Corner ca[8], cb[8];
-//   for (Corner i = 0; i < 8; i++) {
-//     ca[i] = rotation_to_corner[ra[i]][i];
-//     cb[i] = rotation_to_corner[rb[i]][i];
-//   }
-//   Corner ic[8];
-//   for (Corner i = 0; i < 8; i++)
-//     ic[ca[i]] = i;
-//   for (Corner i = 0; i < 8; i++)
-//     rc[i] = rotation_delta[ra[ic[i]]][rb[i]];
-//
-//   State state = {
-//       .unused = 0,
-//       .prev_move = 0,
-//       .depth = 0,
-//   };
-//   return pack(state, ec, pc, rc);
-// }
+static State delta(State a, State b) {
+  Edge ea[12], eb[12], ec[12];
+  bool pa[12], pb[12], pc[12];
+  RotationState ra[8], rb[8], rc[8];
+  unpack(a, ea, pa, ra);
+  unpack(b, eb, pb, rb);
+
+  Edge ie[12];
+  for (Edge i = 0; i < 12; i++)
+    ie[eb[i]] = i;
+  for (Edge i = 0; i < 12; i++) {
+    ec[ie[ea[i]]] = i;
+    pc[ie[ea[i]]] = pa[i] ^ pb[ie[ea[i]]];
+  }
+
+  Corner ca[8], cb[8];
+  for (Corner i = 0; i < 8; i++) {
+    ca[i] = rotation_to_corner[ra[i]][i];
+    cb[i] = rotation_to_corner[rb[i]][i];
+  }
+  Corner ic[8];
+  for (Corner i = 0; i < 8; i++)
+    ic[cb[i]] = i;
+  for (Corner i = 0; i < 8; i++)
+    rc[ic[ca[i]]] = rotation_delta[ra[i]][rb[ic[i]]];
+
+  State state = {
+      .unused = 0,
+      .prev_move = 0,
+      .depth = 0,
+  };
+  return pack(state, ec, pc, rc);
+}
 
 static State *get(State *table, const State *state) {
   for (size_t bucket = hash_state(state) % kTableSize; true;
@@ -252,39 +252,42 @@ static void output_moves(State *table, const State *state, bool reverse) {
 }
 
 typedef struct {
-  State **tables;
+  State *table;
+  const State *scrambled;
   size_t depth;
-  int table_i;
   size_t range_begin;
   size_t range_end;
-} TaskArgs;
+} Task;
 
 static pthread_mutex_t output_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static void *task(void *args) {
-  State **tables = ((TaskArgs *)args)->tables;
-  size_t depth = ((TaskArgs *)args)->depth;
-  int table_i = ((TaskArgs *)args)->table_i;
-  size_t range_begin = ((TaskArgs *)args)->range_begin;
-  size_t range_end = ((TaskArgs *)args)->range_end;
+  Task *task = (Task *)args;
+  State *table = task->table;
+  size_t depth = task->depth;
+  size_t range_begin = task->range_begin;
+  size_t range_end = task->range_end;
+  State scrambled = *task->scrambled;
 
-  State *table = tables[table_i];
   for (size_t i = range_begin; i < range_end; i++) {
     if (table[i].depth == depth) {
       Side prev_side = move_to_side(table[i].prev_move);
       for (Move move = 0; move <= MOVE_END; move++) {
         if (depth > 1 && prev_side == move_to_side(move))
           continue;
+
         State next = make_move(table[i], move);
         State *pos = get(table, &next);
-        if (pos->depth)
+        if (cmp_state(pos, &next) == 0)
           continue;
         insert(table, pos, &next);
-        State *match = get(tables[!table_i], &next);
-        if (match->depth) {
+
+        State diff = delta(next, scrambled);
+        State *match = get(table, &diff);
+        if (cmp_state(&diff, match) == 0) {
           pthread_mutex_lock(&output_lock);
-          output_moves(tables[1], get(tables[1], match), false);
-          output_moves(tables[0], get(tables[0], match), true);
+          output_moves(table, get(table, match), true);
+          output_moves(table, get(table, &next), true);
           printf("\n");
           exit(0);
         }
@@ -314,40 +317,36 @@ State scramble(const State *state) {
 }
 
 int main() {
-  State *mem = mmap(NULL, kMemB, PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE | MAP_HUGETLB |
-                        MAP_HUGE_1GB,
-                    -1, 0);
-  if (mem == MAP_FAILED) {
-    fprintf(stderr, "mmap() failed.  Falling back to malloc().\n");
-    mem = malloc(kMemB);
-    if (mem == NULL) {
-      fprintf(stderr, "malloc() failed.\n");
+  State *table = mmap(NULL, kMemB, PROT_READ | PROT_WRITE,
+                      MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE | MAP_HUGETLB |
+                          MAP_HUGE_1GB,
+                      -1, 0);
+  if (table == MAP_FAILED) {
+    fprintf(stderr, "mmap() failed.  Falling back to calloc().\n");
+    table = calloc(kTableSize, sizeof(State));
+    if (table == NULL) {
+      fprintf(stderr, "calloc() failed.\n");
       return 1;
     }
   }
 
-  State scrambled = scramble(&kSolved);
+  const State scrambled = scramble(&kSolved);
 
-  State *tables[2] = {mem, mem + kTableSize};
-  insert(tables[0], get(tables[0], &kSolved), &kSolved);
-  insert(tables[1], get(tables[1], &scrambled), &scrambled);
+  insert(table, get(table, &kSolved), &kSolved);
 
   for (size_t depth = 1; true; depth++) {
-    for (int table_i = 0; table_i < 2; table_i++) {
-      TaskArgs args[kNumThreads];
-      pthread_t tids[kNumThreads];
-      for (int i = 0; i < kNumThreads; i++) {
-        args[i].tables = tables;
-        args[i].depth = depth;
-        args[i].table_i = table_i;
-        args[i].range_begin = i * kTableSize / kNumThreads;
-        args[i].range_end = (i + 1) * kTableSize / kNumThreads;
-        pthread_create(&tids[i], NULL, task, &args[i]);
-      }
-      for (int i = 0; i < kNumThreads; i++) {
-        pthread_join(tids[i], NULL);
-      }
+    Task args[kNumThreads];
+    pthread_t tids[kNumThreads];
+    for (int i = 0; i < kNumThreads; i++) {
+      args[i].table = table;
+      args[i].scrambled = &scrambled;
+      args[i].depth = depth;
+      args[i].range_begin = i * kTableSize / kNumThreads;
+      args[i].range_end = (i + 1) * kTableSize / kNumThreads;
+      pthread_create(&tids[i], NULL, task, &args[i]);
+    }
+    for (int i = 0; i < kNumThreads; i++) {
+      pthread_join(tids[i], NULL);
     }
   }
 }
