@@ -228,6 +228,40 @@ static State make_move(State state, Move move) {
   return state;
 }
 
+static State delta(State a, State b) {
+  Edge ea[12], eb[12], ec[12];
+  bool pa[12], pb[12], pc[12];
+  RotationState ra[8], rb[8], rc[8];
+  unpack(a, ea, pa, ra);
+  unpack(b, eb, pb, rb);
+
+  Edge ie[12];
+  for (Edge i = 0; i < 12; i++)
+    ie[ea[i]] = i;
+  for (Edge i = 0; i < 12; i++) {
+    ec[i] = ie[eb[i]];
+    pc[i] = eb[i] ^ ea[ie[eb[i]]];
+  }
+
+  Corner ca[8], cb[8];
+  for (Corner i = 0; i < 8; i++) {
+    ca[i] = rotation_to_corner[ra[i]][i];
+    cb[i] = rotation_to_corner[rb[i]][i];
+  }
+  Corner ic[8];
+  for (Corner i = 0; i < 8; i++)
+    ic[ca[i]] = i;
+  for (Corner i = 0; i < 8; i++)
+    rc[i] = rotation_delta[ra[ic[i]]][rb[i]];
+
+  State state = {
+      .unused = 0,
+      .prev_move = 0,
+      .depth = 0,
+  };
+  return pack(state, ec, pc, rc);
+}
+
 static State *get(State *table, const State *state) {
   for (size_t bucket = hash_state(state) % kTableSize; true;
        bucket = (bucket + 1) % kTableSize) {
