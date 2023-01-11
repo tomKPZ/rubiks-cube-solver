@@ -52,7 +52,7 @@ def dfs(pos):
             aux(turn)
 
     aux(pos)
-    seen_l = sorted(seen)
+    seen_l = sorted(seen, reverse=True)
     return dict(zip(seen_l, range(len(seen_l))))
 
 
@@ -61,7 +61,7 @@ ROTS = dfs(to_tuple(I3))
 FACES = dfs((1, 0, 0))
 EDGES = dfs((1, 1, 0))
 CORNERS = dfs((1, 1, 1))
-FACE_NAMES = dict(zip("BLDURF", FACES))
+FACE_NAMES = dict(zip("FRUDLB", FACES))
 INV = dict(
     (rot, [r for r in ROTS if np.array_equal(np.matmul(r, rot), I3)][0]) for rot in ROTS
 )

@@ -44,10 +44,9 @@ typedef struct __attribute__((packed)) __attribute__((aligned(16))) {
   Move prev_move;
 } State;
 
-#define KEY_LEN 13
-
 _Static_assert(sizeof(State) == 16, "");
-_Static_assert(offsetof(State, depth) == KEY_LEN, "");
 
-const char side_to_char[] = "BLDURF";
+#define KEY_LEN offsetof(State, depth)
+
+const char side_to_char[] = "FRUDLB";
 const char turn_to_char[] = " 2'";
