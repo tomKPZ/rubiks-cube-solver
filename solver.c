@@ -15,9 +15,9 @@
 #include "tables.c"
 
 static const int kNumThreads = 32;
-static const int kScrambleDepth = 4;
+static const int kScrambleDepth = 10;
 
-const size_t kMemGB = 8;
+const size_t kMemGB = 2;
 const size_t kMemB = kMemGB * 1024 * 1024 * 1024;
 const size_t kTableSize = kMemB / sizeof(State);
 
@@ -252,6 +252,7 @@ typedef struct {
   size_t depth;
   size_t range_begin;
   size_t range_end;
+  pthread_barrier_t *barrier;
 } Task;
 
 static pthread_mutex_t output_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -276,16 +277,21 @@ static void *task(void *args) {
         if (cmp_state(pos, &next) == 0)
           continue;
         insert(table, pos, &next);
-
-        State diff = delta(next, scrambled);
-        State *match = get(table, &diff);
-        if (cmp_state(&diff, match) == 0) {
-          pthread_mutex_lock(&output_lock);
-          output_moves(table, get(table, match));
-          output_moves(table, get(table, &next));
-          printf("\n");
-          exit(0);
-        }
+      }
+    }
+  }
+  pthread_barrier_wait(task->barrier);
+  for (size_t i = range_begin; i < range_end; i++) {
+    // TODO: Change condition once delta bug is fixed.
+    if (table[i].depth) {
+      State diff = delta(table[i], scrambled);
+      State *match = get(table, &diff);
+      if (cmp_state(&diff, match) == 0) {
+        pthread_mutex_lock(&output_lock);
+        output_moves(table, get(table, match));
+        output_moves(table, get(table, &table[i]));
+        printf("\n");
+        exit(0);
       }
     }
   }
@@ -330,6 +336,9 @@ int main() {
   insert(table, get(table, &kSolved), &kSolved);
 
   for (size_t depth = 1; true; depth++) {
+    pthread_barrier_t barrier;
+    pthread_barrier_init(&barrier, NULL, kNumThreads);
+
     Task args[kNumThreads];
     pthread_t tids[kNumThreads];
     for (int i = 0; i < kNumThreads; i++) {
@@ -338,6 +347,7 @@ int main() {
       args[i].depth = depth;
       args[i].range_begin = i * kTableSize / kNumThreads;
       args[i].range_end = (i + 1) * kTableSize / kNumThreads;
+      args[i].barrier = &barrier;
       pthread_create(&tids[i], NULL, task, &args[i]);
     }
     for (int i = 0; i < kNumThreads; i++) {
