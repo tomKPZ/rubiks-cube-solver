@@ -88,22 +88,31 @@ def rotation_delta(r1, r2):
     return ROTS[to_tuple(np.matmul(r2, INV[r1]))]
 
 
+def moves(rot, face):
+    return [
+        ROTS[to_tuple(np.matmul(np.linalg.matrix_power(rotCW(*face), p), rot))]
+        for p in range(1, 4)
+    ]
+
+
 def output_table(sig, arr, f):
-    print("static const %s = {" % sig, file=f)
-    for row in arr:
-        print("{ %s }," % ", ".join(str(x) for x in row), file=f)
-    print("};", file=f)
+    def aux(arr) -> str:
+        if type(arr) == list:
+            return "{ %s }" % ", ".join(aux(a) for a in arr)
+        return str(arr)
+
+    print(("static const %s = %s;") % (sig, aux(arr)), file=f)
 
 
 def output(f):
     print('#include "types.h"', file=f)
-    rotate = [[ROTS[pos] for pos in turns(r)] for r in ROTS]
+    rotate = [[moves(r, f) for f in FACES] for r in ROTS]
     edge_orbits = [orbit(EDGES, face) for face in FACES]
     corner_orbits = [orbit(CORNERS, face) for face in FACES]
     r2c = [[rotation_to_id(CORNERS, r, c) for c in CORNERS] for r in ROTS]
     r2e = [[rotation_to_id(EDGES, r, e) for e in EDGES] for r in ROTS]
     rd = [[rotation_delta(r1, r2) for r2 in ROTS] for r1 in ROTS]
-    output_table("RotationState rotate[][ROTATE_END]", rotate, f)
+    output_table("RotationState rotate[24][SIDE_END + 1][3]", rotate, f)
     output_table("Edge edge_orbits[SIDE_END + 1][4]", edge_orbits, f)
     output_table("Corner corner_orbits[SIDE_END + 1][4]", corner_orbits, f)
     output_table("Corner rotation_to_corner[24][8]", r2c, f)

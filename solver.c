@@ -112,7 +112,6 @@ static inline State pack(State state, const RotationState edges[12],
 }
 
 static State make_move(State state, Move move) {
-  Rotation rotation = move_to_rotation(move);
   const Edge *edge_orbit = edge_orbits[move.side];
   const Corner *corner_orbit = corner_orbits[move.side];
   RotationState edges[12];
@@ -123,13 +122,13 @@ static State make_move(State state, Move move) {
 
   RotationState tmp_edges[4];
   for (size_t i = 0; i < 4; i++)
-    tmp_edges[i] = rotate[edges[edge_orbit[i]]][rotation];
+    tmp_edges[i] = rotate[edges[edge_orbit[i]]][move.side][move.turn];
   for (size_t i = 0; i < 4; i++)
     edges[edge_orbit[i]] = tmp_edges[(i + offset) % 4];
 
   RotationState tmp_corners[4];
   for (size_t i = 0; i < 4; i++)
-    tmp_corners[i] = rotate[corners[corner_orbit[i]]][rotation];
+    tmp_corners[i] = rotate[corners[corner_orbit[i]]][move.side][move.turn];
   for (size_t i = 0; i < 4; i++)
     corners[corner_orbit[i]] = tmp_corners[(i + offset) % 4];
 
