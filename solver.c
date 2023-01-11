@@ -23,16 +23,16 @@ static const size_t kTableSize = kMemB / sizeof(TableEntry);
 static const TableEntry kSolved = {
     .key = {0}, .depth = 1, .prev_move = {.side = 0, .turn = 0}};
 
-static size_t hash_state(const State *state) {
+static size_t hash_state(State state) {
   // djb2
   size_t hash = 5381;
   for (size_t i = 0; i < sizeof(State); i++)
-    hash = hash * 33 + ((const char *)state)[i];
+    hash = hash * 33 + ((const char *)&state)[i];
   return hash;
 }
 
-static int cmp_state(const State *state1, const State *state2) {
-  return memcmp(state1, state2, sizeof(State));
+static int cmp_state(State state1, State state2) {
+  return memcmp(&state1, &state2, sizeof(State));
 }
 
 static inline void unpack(State state, RotationState edges[12],
@@ -143,19 +143,18 @@ static State delta(State a, State b) {
   return pack(rec, rcc);
 }
 
-static TableEntry *get(TableEntry *table, const State *state) {
+static TableEntry *get(TableEntry *table, State state) {
   for (size_t bucket = hash_state(state) % kTableSize; true;
        bucket = (bucket + 1) % kTableSize) {
-    if (!table[bucket].depth || cmp_state(state, &table[bucket].key) == 0)
+    if (!table[bucket].depth || cmp_state(state, table[bucket].key) == 0)
       return &table[bucket];
   }
 }
 
-static void insert(TableEntry *table_state, TableEntry *pos,
-                   const TableEntry *state) {
+static void insert(TableEntry *table_state, TableEntry *pos, TableEntry state) {
   __int128_t *table = (__int128_t *)table_state;
   __int128_t expected = 0;
-  __int128_t desired = *((__int128 *)state);
+  __int128_t desired = *((__int128 *)&state);
 
   for (size_t bucket = pos - table_state;
        !__atomic_compare_exchange_n(&table[bucket], &expected, desired, false,
@@ -168,12 +167,12 @@ static void output_move(Move move) {
   printf("%c%c ", side_to_char[move.side], turn_to_char[move.turn]);
 }
 
-static void output_moves(TableEntry *table, const TableEntry *state) {
-  while (state->depth > 1) {
-    Move reversed = {state->prev_move.side, 2 - state->prev_move.turn};
+static void output_moves(TableEntry *table, TableEntry state) {
+  while (state.depth > 1) {
+    Move reversed = {state.prev_move.side, 2 - state.prev_move.turn};
     output_move(reversed);
-    TableEntry moved = make_move(*state, reversed);
-    state = get(table, &moved.key);
+    TableEntry moved = make_move(state, reversed);
+    state = *get(table, moved.key);
   }
 }
 
@@ -204,9 +203,9 @@ static void *task(void *args) {
           for (Turn turn = 0; turn < 3; turn++) {
             Move move = {.side = side, .turn = turn};
             TableEntry next = make_move(table[i], move);
-            TableEntry *pos = get(table, &next.key);
-            if (cmp_state(&pos->key, &next.key))
-              insert(table, pos, &next);
+            TableEntry *pos = get(table, next.key);
+            if (cmp_state(pos->key, next.key))
+              insert(table, pos, next);
           }
         }
       }
@@ -216,11 +215,11 @@ static void *task(void *args) {
   for (size_t i = range_begin; i < range_end; i++) {
     if (table[i].depth == depth + 1) {
       State diff = delta(table[i].key, scrambled.key);
-      TableEntry *match = get(table, &diff);
-      if (cmp_state(&diff, &match->key) == 0) {
+      TableEntry *match = get(table, diff);
+      if (cmp_state(diff, match->key) == 0) {
         pthread_mutex_lock(&output_lock);
-        output_moves(table, get(table, &match->key));
-        output_moves(table, get(table, &table[i].key));
+        output_moves(table, *get(table, match->key));
+        output_moves(table, *get(table, table[i].key));
         printf("\n");
         exit(0);
       }
@@ -268,7 +267,7 @@ int main() {
 
   const TableEntry scrambled = scramble(&kSolved);
 
-  insert(table, get(table, &kSolved.key), &kSolved);
+  insert(table, get(table, kSolved.key), kSolved);
 
   for (size_t depth = 1; true; depth++) {
     pthread_barrier_t barrier;
