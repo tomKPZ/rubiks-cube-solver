@@ -16,19 +16,20 @@ typedef struct {
 } Move;
 
 typedef struct __attribute__((packed)) __attribute__((aligned(16))) {
-  RotationState edge1 : 5;
-  RotationState edge2 : 5;
-  RotationState edge3 : 5;
-  RotationState edge4 : 5;
-  RotationState edge5 : 5;
-  RotationState edge6 : 5;
-  RotationState edge7 : 5;
-  RotationState edge8 : 5;
-  RotationState edge9 : 5;
+  RotationState edge00 : 5;
+  RotationState edge01 : 5;
+  RotationState edge02 : 5;
+  RotationState edge03 : 5;
+  RotationState edge04 : 5;
+  RotationState edge05 : 5;
+  RotationState edge06 : 5;
+  RotationState edge07 : 5;
+  RotationState edge08 : 5;
+  RotationState edge09 : 5;
   RotationState edge10 : 5;
   RotationState edge11 : 5;
-  RotationState edge12 : 5;
 
+  RotationState corner0 : 5;
   RotationState corner1 : 5;
   RotationState corner2 : 5;
   RotationState corner3 : 5;
@@ -36,7 +37,6 @@ typedef struct __attribute__((packed)) __attribute__((aligned(16))) {
   RotationState corner5 : 5;
   RotationState corner6 : 5;
   RotationState corner7 : 5;
-  RotationState corner8 : 5;
 
   int unused : 4;
 

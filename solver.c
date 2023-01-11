@@ -21,19 +21,20 @@ const size_t kMemB = kMemGB * 1024 * 1024 * 1024;
 const size_t kTableSize = kMemB / sizeof(State);
 
 static const State kSolved = {
-    .edge1 = 0,
-    .edge2 = 0,
-    .edge3 = 0,
-    .edge4 = 0,
-    .edge5 = 0,
-    .edge6 = 0,
-    .edge7 = 0,
-    .edge8 = 0,
-    .edge9 = 0,
+    .edge00 = 0,
+    .edge01 = 0,
+    .edge02 = 0,
+    .edge03 = 0,
+    .edge04 = 0,
+    .edge05 = 0,
+    .edge06 = 0,
+    .edge07 = 0,
+    .edge08 = 0,
+    .edge09 = 0,
     .edge10 = 0,
     .edge11 = 0,
-    .edge12 = 0,
 
+    .corner0 = 0,
     .corner1 = 0,
     .corner2 = 0,
     .corner3 = 0,
@@ -41,7 +42,6 @@ static const State kSolved = {
     .corner5 = 0,
     .corner6 = 0,
     .corner7 = 0,
-    .corner8 = 0,
 
     .unused = 0,
 
@@ -63,50 +63,50 @@ static int cmp_state(const State *state1, const State *state2) {
 
 static inline void unpack(State state, RotationState edges[12],
                           RotationState corners[8]) {
-  edges[0] = state.edge1;
-  edges[1] = state.edge2;
-  edges[2] = state.edge3;
-  edges[3] = state.edge4;
-  edges[4] = state.edge5;
-  edges[5] = state.edge6;
-  edges[6] = state.edge7;
-  edges[7] = state.edge8;
-  edges[8] = state.edge9;
-  edges[9] = state.edge10;
-  edges[10] = state.edge11;
-  edges[11] = state.edge12;
-  corners[0] = state.corner1;
-  corners[1] = state.corner2;
-  corners[2] = state.corner3;
-  corners[3] = state.corner4;
-  corners[4] = state.corner5;
-  corners[5] = state.corner6;
-  corners[6] = state.corner7;
-  corners[7] = state.corner8;
+  edges[0] = state.edge00;
+  edges[1] = state.edge01;
+  edges[2] = state.edge02;
+  edges[3] = state.edge03;
+  edges[4] = state.edge04;
+  edges[5] = state.edge05;
+  edges[6] = state.edge06;
+  edges[7] = state.edge07;
+  edges[8] = state.edge08;
+  edges[9] = state.edge09;
+  edges[10] = state.edge10;
+  edges[11] = state.edge11;
+  corners[0] = state.corner0;
+  corners[1] = state.corner1;
+  corners[2] = state.corner2;
+  corners[3] = state.corner3;
+  corners[4] = state.corner4;
+  corners[5] = state.corner5;
+  corners[6] = state.corner6;
+  corners[7] = state.corner7;
 }
 
 static inline State pack(State state, const RotationState edges[12],
                          const RotationState corners[8]) {
-  state.edge1 = edges[0];
-  state.edge2 = edges[1];
-  state.edge3 = edges[2];
-  state.edge4 = edges[3];
-  state.edge5 = edges[4];
-  state.edge6 = edges[5];
-  state.edge7 = edges[6];
-  state.edge8 = edges[7];
-  state.edge9 = edges[8];
-  state.edge10 = edges[9];
-  state.edge11 = edges[10];
-  state.edge12 = edges[11];
-  state.corner1 = corners[0];
-  state.corner2 = corners[1];
-  state.corner3 = corners[2];
-  state.corner4 = corners[3];
-  state.corner5 = corners[4];
-  state.corner6 = corners[5];
-  state.corner7 = corners[6];
-  state.corner8 = corners[7];
+  state.edge00 = edges[0];
+  state.edge01 = edges[1];
+  state.edge02 = edges[2];
+  state.edge03 = edges[3];
+  state.edge04 = edges[4];
+  state.edge05 = edges[5];
+  state.edge06 = edges[6];
+  state.edge07 = edges[7];
+  state.edge08 = edges[8];
+  state.edge09 = edges[9];
+  state.edge10 = edges[10];
+  state.edge11 = edges[11];
+  state.corner0 = corners[0];
+  state.corner1 = corners[1];
+  state.corner2 = corners[2];
+  state.corner3 = corners[3];
+  state.corner4 = corners[4];
+  state.corner5 = corners[5];
+  state.corner6 = corners[6];
+  state.corner7 = corners[7];
   return state;
 }
 
