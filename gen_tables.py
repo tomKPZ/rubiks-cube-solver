@@ -104,8 +104,8 @@ def output(f):
     r2e = [[rotation_to_id(EDGES, r, e) for e in EDGES] for r in ROTS]
     rd = [[rotation_delta(r1, r2) for r2 in ROTS] for r1 in ROTS]
     output_table("RotationState rotate[][ROTATE_END]", rotate, f)
-    output_table("Edge edge_orbits[SIDE_END][4]", edge_orbits, f)
-    output_table("Corner corner_orbits[SIDE_END][4]", corner_orbits, f)
+    output_table("Edge edge_orbits[SIDE_END + 1][4]", edge_orbits, f)
+    output_table("Corner corner_orbits[SIDE_END + 1][4]", corner_orbits, f)
     output_table("Corner rotation_to_corner[24][8]", r2c, f)
     output_table("Corner rotation_to_edge[24][12]", r2e, f)
     output_table("RotationState rotation_delta[24][24]", rd, f)
