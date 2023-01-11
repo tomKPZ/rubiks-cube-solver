@@ -30,19 +30,6 @@ typedef struct __attribute__((packed)) __attribute__((aligned(2))) {
   Turn turn : 8;
 } Move;
 
-typedef enum {
-  ROTATE_F1 = 0,
-  ROTATE_F2,
-  ROTATE_FP,
-  ROTATE_R1,
-  ROTATE_R2,
-  ROTATE_RP,
-  ROTATE_U1,
-  ROTATE_U2,
-  ROTATE_UP,
-  ROTATE_END,
-} Rotation;
-
 typedef struct __attribute__((packed)) __attribute__((aligned(16))) {
   RotationState edge1 : 5;
   RotationState edge2 : 5;
@@ -102,64 +89,5 @@ static inline char turn_to_char(Turn turn) {
     return '2';
   case CCW:
     return '\'';
-  }
-}
-
-static inline Rotation move_to_rotation(Move move) {
-  switch (move.side) {
-  case SIDE_B:
-    switch (move.turn) {
-    case CW:
-      return ROTATE_FP;
-    case HALF:
-      return ROTATE_F2;
-    case CCW:
-      return ROTATE_F1;
-    }
-  case SIDE_L:
-    switch (move.turn) {
-    case CW:
-      return ROTATE_RP;
-    case HALF:
-      return ROTATE_R2;
-    case CCW:
-      return ROTATE_R1;
-    }
-  case SIDE_D:
-    switch (move.turn) {
-    case CW:
-      return ROTATE_UP;
-    case HALF:
-      return ROTATE_U2;
-    case CCW:
-      return ROTATE_U1;
-    }
-  case SIDE_U:
-    switch (move.turn) {
-    case CW:
-      return ROTATE_U1;
-    case HALF:
-      return ROTATE_U2;
-    case CCW:
-      return ROTATE_UP;
-    }
-  case SIDE_R:
-    switch (move.turn) {
-    case CW:
-      return ROTATE_R1;
-    case HALF:
-      return ROTATE_R2;
-    case CCW:
-      return ROTATE_RP;
-    }
-  case SIDE_F:
-    switch (move.turn) {
-    case CW:
-      return ROTATE_F1;
-    case HALF:
-      return ROTATE_F2;
-    case CCW:
-      return ROTATE_FP;
-    }
   }
 }
