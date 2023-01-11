@@ -7,27 +7,12 @@
 typedef uint8_t RotationState;
 typedef uint8_t Edge;
 typedef uint8_t Corner;
+typedef uint8_t Side;
+typedef uint8_t Turn;
 
-typedef enum {
-  SIDE_B = 0,
-  SIDE_L,
-  SIDE_D,
-  SIDE_U,
-  SIDE_R,
-  SIDE_F,
-  SIDE_END = SIDE_F,
-} Side;
-
-typedef enum {
-  CW,
-  HALF,
-  CCW,
-  TURN_END = CCW,
-} Turn;
-
-typedef struct __attribute__((packed)) __attribute__((aligned(2))) {
-  Side side : 8;
-  Turn turn : 8;
+typedef struct {
+  Side side;
+  Turn turn;
 } Move;
 
 typedef struct __attribute__((packed)) __attribute__((aligned(16))) {
@@ -64,30 +49,5 @@ typedef struct __attribute__((packed)) __attribute__((aligned(16))) {
 _Static_assert(sizeof(State) == 16, "");
 _Static_assert(offsetof(State, depth) == KEY_LEN, "");
 
-static inline char side_to_char(Side side) {
-  switch (side) {
-  case SIDE_B:
-    return 'B';
-  case SIDE_L:
-    return 'L';
-  case SIDE_D:
-    return 'D';
-  case SIDE_U:
-    return 'U';
-  case SIDE_R:
-    return 'R';
-  case SIDE_F:
-    return 'F';
-  }
-}
-
-static inline char turn_to_char(Turn turn) {
-  switch (turn) {
-  case CW:
-    return ' ';
-  case HALF:
-    return '2';
-  case CCW:
-    return '\'';
-  }
-}
+const char side_to_char[] = "BLDURF";
+const char turn_to_char[] = " 2'";
