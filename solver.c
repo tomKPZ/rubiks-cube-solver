@@ -15,7 +15,7 @@
 #include "tables.c"
 
 static const int kNumThreads = 32;
-static const int kScrambleDepth = 10;
+static const int kScrambleDepth = 14;
 
 const size_t kMemGB = 2;
 const size_t kMemB = kMemGB * 1024 * 1024 * 1024;
@@ -207,7 +207,7 @@ static State delta(State a, State b) {
   for (Corner i = 0; i < 8; i++)
     ic[cb[i]] = i;
   for (Corner i = 0; i < 8; i++)
-    rc[ic[ca[i]]] = rotation_delta[ra[i]][rb[ic[i]]];
+    rc[ic[ca[i]]] = rotation_delta[ra[i]][rb[ic[ca[i]]]];
 
   State state = {
       .unused = 0,
@@ -269,21 +269,18 @@ static void *task(void *args) {
     if (table[i].depth == depth) {
       Side prev_side = move_to_side(table[i].prev_move);
       for (Move move = 0; move <= MOVE_END; move++) {
-        if (depth > 1 && prev_side == move_to_side(move))
-          continue;
-
-        State next = make_move(table[i], move);
-        State *pos = get(table, &next);
-        if (cmp_state(pos, &next) == 0)
-          continue;
-        insert(table, pos, &next);
+        if (depth == 1 || prev_side != move_to_side(move)) {
+          State next = make_move(table[i], move);
+          State *pos = get(table, &next);
+          if (cmp_state(pos, &next))
+            insert(table, pos, &next);
+        }
       }
     }
   }
   pthread_barrier_wait(task->barrier);
   for (size_t i = range_begin; i < range_end; i++) {
-    // TODO: Change condition once delta bug is fixed.
-    if (table[i].depth) {
+    if (table[i].depth == depth + 1) {
       State diff = delta(table[i], scrambled);
       State *match = get(table, &diff);
       if (cmp_state(&diff, match) == 0) {
@@ -350,8 +347,7 @@ int main() {
       args[i].barrier = &barrier;
       pthread_create(&tids[i], NULL, task, &args[i]);
     }
-    for (int i = 0; i < kNumThreads; i++) {
+    for (int i = 0; i < kNumThreads; i++)
       pthread_join(tids[i], NULL);
-    }
   }
 }
