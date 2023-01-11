@@ -47,19 +47,19 @@ static const State kSolved = {
     .unused = 0,
 
     .depth = 1,
-    .prev_move = 0,
+    .prev_move = {.side = 0, .turn = 0},
 };
 
 static size_t hash_state(const State *state) {
   // djb2
   size_t hash = 5381;
-  for (size_t i = 0; i < 14; i++)
+  for (size_t i = 0; i < KEY_LEN; i++)
     hash = hash * 33 + ((const char *)state)[i];
   return hash;
 }
 
 static int cmp_state(const State *state1, const State *state2) {
-  return memcmp(state1, state2, 14);
+  return memcmp(state1, state2, KEY_LEN);
 }
 
 static inline void unpack(State state, RotationState edges[12],
@@ -113,15 +113,13 @@ static inline State pack(State state, const RotationState edges[12],
 
 static State make_move(State state, Move move) {
   Rotation rotation = move_to_rotation(move);
-  Side side = move_to_side(move);
-  Turn turn = move_to_turn(move);
-  const Edge *edge_orbit = edge_orbits[side];
-  const Corner *corner_orbit = corner_orbits[side];
+  const Edge *edge_orbit = edge_orbits[move.side];
+  const Corner *corner_orbit = corner_orbits[move.side];
   RotationState edges[12];
   RotationState corners[8];
   unpack(state, edges, corners);
 
-  uint8_t offset = 3 - turn;
+  uint8_t offset = 3 - move.turn;
 
   RotationState tmp_edges[4];
   for (size_t i = 0; i < 4; i++)
@@ -171,7 +169,7 @@ static State delta(State a, State b) {
 
   State state = {
       .unused = 0,
-      .prev_move = 0,
+      .prev_move = {0},
       .depth = 0,
   };
   return pack(state, rec, rcc);
@@ -197,10 +195,14 @@ static void insert(State *table_state, State *pos, const State *state) {
   }
 }
 
+static void output_move(Move move) {
+  printf("%c%c ", side_to_char(move.side), turn_to_char(move.turn));
+}
+
 static void output_moves(State *table, const State *state) {
   while (state->depth > 1) {
-    Move reversed = reverse_move(state->prev_move);
-    printf("%s ", move_to_string(reversed));
+    Move reversed = {state->prev_move.side, 2 - state->prev_move.turn};
+    output_move(reversed);
     State moved = make_move(*state, reversed);
     state = get(table, &moved);
   }
@@ -227,13 +229,16 @@ static void *task(void *args) {
 
   for (size_t i = range_begin; i < range_end; i++) {
     if (table[i].depth == depth) {
-      Side prev_side = move_to_side(table[i].prev_move);
-      for (Move move = 0; move <= MOVE_END; move++) {
-        if (depth == 1 || prev_side != move_to_side(move)) {
-          State next = make_move(table[i], move);
-          State *pos = get(table, &next);
-          if (cmp_state(pos, &next))
-            insert(table, pos, &next);
+      Side prev_side = table[i].prev_move.side;
+      for (Side side = 0; side <= SIDE_END; side++) {
+        if (depth == 1 || prev_side != side) {
+          for (Turn turn = 0; turn <= TURN_END; turn++) {
+            Move move = {.side = side, .turn = turn};
+            State next = make_move(table[i], move);
+            State *pos = get(table, &next);
+            if (cmp_state(pos, &next))
+              insert(table, pos, &next);
+          }
         }
       }
     }
@@ -258,19 +263,23 @@ static void *task(void *args) {
 State scramble(const State *state) {
   State scrambled = *state;
   srand(time(NULL));
-  Side prev = SIDE_END;
+  Side prev = SIDE_END + 1;
   for (int i = 0; i < kScrambleDepth; i++) {
-    Move move;
+    Side side;
     do {
-      move = rand() % (MOVE_END + 1);
-    } while (move_to_side(move) == prev);
-    prev = move_to_side(move);
+      side = rand() % (SIDE_END + 1);
+    } while (side == prev);
+    Turn turn = rand() % (TURN_END + 1);
+    Move move = {.side = side, .turn = turn};
+
+    prev = side;
     scrambled = make_move(scrambled, move);
-    printf("%s ", move_to_string(move));
+    output_move(move);
   }
   printf("\n");
   scrambled.depth = 1;
-  scrambled.prev_move = 0;
+  scrambled.prev_move.side = 0;
+  scrambled.prev_move.turn = 0;
   return scrambled;
 }
 
