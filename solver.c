@@ -195,7 +195,7 @@ static void insert(State *table_state, State *pos, const State *state) {
 }
 
 static void output_move(Move move) {
-  printf("%c%c ", side_to_char(move.side), turn_to_char(move.turn));
+  printf("%c%c ", side_to_char[move.side], turn_to_char[move.turn]);
 }
 
 static void output_moves(State *table, const State *state) {
@@ -229,9 +229,9 @@ static void *task(void *args) {
   for (size_t i = range_begin; i < range_end; i++) {
     if (table[i].depth == depth) {
       Side prev_side = table[i].prev_move.side;
-      for (Side side = 0; side <= SIDE_END; side++) {
+      for (Side side = 0; side < 6; side++) {
         if (depth == 1 || prev_side != side) {
-          for (Turn turn = 0; turn <= TURN_END; turn++) {
+          for (Turn turn = 0; turn < 3; turn++) {
             Move move = {.side = side, .turn = turn};
             State next = make_move(table[i], move);
             State *pos = get(table, &next);
@@ -262,13 +262,13 @@ static void *task(void *args) {
 State scramble(const State *state) {
   State scrambled = *state;
   srand(time(NULL));
-  Side prev = SIDE_END + 1;
+  Side prev = 6;
   for (int i = 0; i < kScrambleDepth; i++) {
     Side side;
     do {
-      side = rand() % (SIDE_END + 1);
+      side = rand() % 6;
     } while (side == prev);
-    Turn turn = rand() % (TURN_END + 1);
+    Turn turn = rand() % 3;
     Move move = {.side = side, .turn = turn};
 
     prev = side;
