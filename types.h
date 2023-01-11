@@ -15,7 +15,7 @@ typedef struct {
   Turn turn;
 } Move;
 
-typedef struct __attribute__((packed)) __attribute__((aligned(16))) {
+typedef struct __attribute__((packed)) {
   RotationState edge00 : 5;
   RotationState edge01 : 5;
   RotationState edge02 : 5;
@@ -39,14 +39,19 @@ typedef struct __attribute__((packed)) __attribute__((aligned(16))) {
   RotationState corner7 : 5;
 
   int unused : 4;
+} Key;
 
+typedef struct {
   uint8_t depth;
   Move prev_move;
+} Value;
+
+typedef struct __attribute__((aligned(16))) {
+  Key key;
+  Value value;
 } State;
 
 _Static_assert(sizeof(State) == 16, "");
-
-#define KEY_LEN offsetof(State, depth)
 
 const char side_to_char[] = "FRUDLB";
 const char turn_to_char[] = " 2'";
