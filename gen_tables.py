@@ -80,8 +80,8 @@ def orbit(pieces, face):
     ]
 
 
-def rotation_to_corner(rot, corner):
-    return CORNERS[to_tuple(np.matmul(INV[rot], corner))]
+def rotation_to_id(pieces, rot, piece):
+    return pieces[to_tuple(np.matmul(INV[rot], piece))]
 
 
 def rotation_delta(r1, r2):
@@ -100,12 +100,14 @@ def output(f):
     rotate = [[ROTS[pos] for pos in turns(r)] for r in ROTS]
     edge_orbits = [orbit(EDGES, face) for face in FACES]
     corner_orbits = [orbit(CORNERS, face) for face in FACES]
-    r2c = [[rotation_to_corner(r, corner) for corner in CORNERS] for r in ROTS]
+    r2c = [[rotation_to_id(CORNERS, r, c) for c in CORNERS] for r in ROTS]
+    r2e = [[rotation_to_id(EDGES, r, e) for e in EDGES] for r in ROTS]
     rd = [[rotation_delta(r1, r2) for r2 in ROTS] for r1 in ROTS]
     output_table("RotationState rotate[][ROTATE_END]", rotate, f)
     output_table("Edge edge_orbits[SIDE_END][4]", edge_orbits, f)
     output_table("Corner corner_orbits[SIDE_END][4]", corner_orbits, f)
     output_table("Corner rotation_to_corner[24][8]", r2c, f)
+    output_table("Corner rotation_to_edge[24][12]", r2e, f)
     output_table("RotationState rotation_delta[24][24]", rd, f)
 
 

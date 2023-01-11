@@ -60,6 +60,19 @@ typedef enum {
 } Move;
 
 typedef struct __attribute__((packed)) __attribute__((aligned(16))) {
+  RotationState edge1 : 5;
+  RotationState edge2 : 5;
+  RotationState edge3 : 5;
+  RotationState edge4 : 5;
+  RotationState edge5 : 5;
+  RotationState edge6 : 5;
+  RotationState edge7 : 5;
+  RotationState edge8 : 5;
+  RotationState edge9 : 5;
+  RotationState edge10 : 5;
+  RotationState edge11 : 5;
+  RotationState edge12 : 5;
+
   RotationState corner1 : 5;
   RotationState corner2 : 5;
   RotationState corner3 : 5;
@@ -69,30 +82,6 @@ typedef struct __attribute__((packed)) __attribute__((aligned(16))) {
   RotationState corner7 : 5;
   RotationState corner8 : 5;
 
-  Edge edge1 : 4;
-  Edge edge2 : 4;
-  Edge edge3 : 4;
-  Edge edge4 : 4;
-  Edge edge5 : 4;
-  Edge edge6 : 4;
-  Edge edge7 : 4;
-  Edge edge8 : 4;
-  Edge edge9 : 4;
-  Edge edge10 : 4;
-  Edge edge11 : 4;
-  Edge edge12 : 4;
-  bool edge1_parity : 1;
-  bool edge2_parity : 1;
-  bool edge3_parity : 1;
-  bool edge4_parity : 1;
-  bool edge5_parity : 1;
-  bool edge6_parity : 1;
-  bool edge7_parity : 1;
-  bool edge8_parity : 1;
-  bool edge9_parity : 1;
-  bool edge10_parity : 1;
-  bool edge11_parity : 1;
-  bool edge12_parity : 1;
   int unused : 12;
 
   unsigned char depth;
