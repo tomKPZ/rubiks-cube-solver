@@ -10,9 +10,8 @@
 #include <sys/mman.h>
 #include <time.h>
 
+#include "tables.h"
 #include "types.h"
-
-#include "tables.c"
 
 static const int kNumThreads = 32;
 static const int kScrambleDepth = 14;

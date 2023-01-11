@@ -105,6 +105,7 @@ def output_table(sig, arr, f):
 
 
 def output(f):
+    print("#pragma once", file=f)
     print('#include "types.h"', file=f)
     rotate = [[moves(r, f) for f in FACES] for r in ROTS]
     edge_orbits = [orbit(EDGES, face) for face in FACES]
@@ -121,7 +122,7 @@ def output(f):
 
 
 def main():
-    with open("tables.c", "w") as f:
+    with open("tables.h", "w") as f:
         output(f)
 
 
