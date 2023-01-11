@@ -237,17 +237,12 @@ static void insert(State *table_state, State *pos, const State *state) {
   }
 }
 
-static void output_moves(State *table, const State *state, bool reverse) {
-  if (state->depth == 1)
-    return;
-  Move reversed = reverse_move(state->prev_move);
-  State moved = make_move(*state, reversed);
-  if (reverse) {
+static void output_moves(State *table, const State *state) {
+  while (state->depth > 1) {
+    Move reversed = reverse_move(state->prev_move);
     printf("%s ", move_to_string(reversed));
-    output_moves(table, get(table, &moved), reverse);
-  } else {
-    output_moves(table, get(table, &moved), reverse);
-    printf("%s ", move_to_string(state->prev_move));
+    State moved = make_move(*state, reversed);
+    state = get(table, &moved);
   }
 }
 
@@ -286,8 +281,8 @@ static void *task(void *args) {
         State *match = get(table, &diff);
         if (cmp_state(&diff, match) == 0) {
           pthread_mutex_lock(&output_lock);
-          output_moves(table, get(table, match), true);
-          output_moves(table, get(table, &next), true);
+          output_moves(table, get(table, match));
+          output_moves(table, get(table, &next));
           printf("\n");
           exit(0);
         }
