@@ -39,19 +39,15 @@ typedef struct __attribute__((packed)) {
   RotationState corner7 : 5;
 
   int unused : 4;
-} Key;
-
-typedef struct {
-  uint8_t depth;
-  Move prev_move;
-} Value;
-
-typedef struct __attribute__((aligned(16))) {
-  Key key;
-  Value value;
 } State;
 
-_Static_assert(sizeof(State) == 16, "");
+typedef struct __attribute__((aligned(16))) {
+  State key;
+  uint8_t depth;
+  Move prev_move;
+} TableEntry;
+
+_Static_assert(sizeof(TableEntry) == 16, "");
 
 const char side_to_char[] = "FRUDLB";
 const char turn_to_char[] = " 2'";
