@@ -21,47 +21,21 @@ const size_t kMemB = kMemGB * 1024 * 1024 * 1024;
 const size_t kTableSize = kMemB / sizeof(State);
 
 static const State kSolved = {
-    .edge00 = 0,
-    .edge01 = 0,
-    .edge02 = 0,
-    .edge03 = 0,
-    .edge04 = 0,
-    .edge05 = 0,
-    .edge06 = 0,
-    .edge07 = 0,
-    .edge08 = 0,
-    .edge09 = 0,
-    .edge10 = 0,
-    .edge11 = 0,
+    .key = {0}, .value = {.depth = 1, .prev_move = {.side = 0, .turn = 0}}};
 
-    .corner0 = 0,
-    .corner1 = 0,
-    .corner2 = 0,
-    .corner3 = 0,
-    .corner4 = 0,
-    .corner5 = 0,
-    .corner6 = 0,
-    .corner7 = 0,
-
-    .unused = 0,
-
-    .depth = 1,
-    .prev_move = {.side = 0, .turn = 0},
-};
-
-static size_t hash_state(const State *state) {
+static size_t hash_state(const Key *state) {
   // djb2
   size_t hash = 5381;
-  for (size_t i = 0; i < KEY_LEN; i++)
+  for (size_t i = 0; i < sizeof(Key); i++)
     hash = hash * 33 + ((const char *)state)[i];
   return hash;
 }
 
-static int cmp_state(const State *state1, const State *state2) {
-  return memcmp(state1, state2, KEY_LEN);
+static int cmp_state(const Key *state1, const Key *state2) {
+  return memcmp(state1, state2, sizeof(Key));
 }
 
-static inline void unpack(State state, RotationState edges[12],
+static inline void unpack(Key state, RotationState edges[12],
                           RotationState corners[8]) {
   edges[0] = state.edge00;
   edges[1] = state.edge01;
@@ -85,8 +59,9 @@ static inline void unpack(State state, RotationState edges[12],
   corners[7] = state.corner7;
 }
 
-static inline State pack(State state, const RotationState edges[12],
-                         const RotationState corners[8]) {
+static inline Key pack(const RotationState edges[12],
+                       const RotationState corners[8]) {
+  Key state;
   state.edge00 = edges[0];
   state.edge01 = edges[1];
   state.edge02 = edges[2];
@@ -115,7 +90,7 @@ static State make_move(State state, Move move) {
   const Corner *corner_orbit = corner_orbits[move.side];
   RotationState edges[12];
   RotationState corners[8];
-  unpack(state, edges, corners);
+  unpack(state.key, edges, corners);
 
   uint8_t offset = 3 - move.turn;
 
@@ -131,13 +106,13 @@ static State make_move(State state, Move move) {
   for (size_t i = 0; i < 4; i++)
     corners[corner_orbit[i]] = tmp_corners[(i + offset) % 4];
 
-  state = pack(state, edges, corners);
-  state.prev_move = move;
-  state.depth++;
+  state.key = pack(edges, corners);
+  state.value.prev_move = move;
+  state.value.depth++;
   return state;
 }
 
-static State delta(State a, State b) {
+static Key delta(Key a, Key b) {
   RotationState rea[12], reb[12], rec[12];
   RotationState rca[8], rcb[8], rcc[8];
   unpack(a, rea, rca);
@@ -165,18 +140,13 @@ static State delta(State a, State b) {
   for (Corner i = 0; i < 8; i++)
     rcc[ic[ca[i]]] = rotation_delta[rca[i]][rcb[ic[ca[i]]]];
 
-  State state = {
-      .unused = 0,
-      .prev_move = {0},
-      .depth = 0,
-  };
-  return pack(state, rec, rcc);
+  return pack(rec, rcc);
 }
 
-static State *get(State *table, const State *state) {
+static State *get(State *table, const Key *state) {
   for (size_t bucket = hash_state(state) % kTableSize; true;
        bucket = (bucket + 1) % kTableSize) {
-    if (!table[bucket].depth || cmp_state(state, &table[bucket]) == 0)
+    if (!table[bucket].value.depth || cmp_state(state, &table[bucket].key) == 0)
       return &table[bucket];
   }
 }
@@ -198,11 +168,12 @@ static void output_move(Move move) {
 }
 
 static void output_moves(State *table, const State *state) {
-  while (state->depth > 1) {
-    Move reversed = {state->prev_move.side, 2 - state->prev_move.turn};
+  while (state->value.depth > 1) {
+    Move reversed = {state->value.prev_move.side,
+                     2 - state->value.prev_move.turn};
     output_move(reversed);
     State moved = make_move(*state, reversed);
-    state = get(table, &moved);
+    state = get(table, &moved.key);
   }
 }
 
@@ -226,15 +197,15 @@ static void *task(void *args) {
   State scrambled = *task->scrambled;
 
   for (size_t i = range_begin; i < range_end; i++) {
-    if (table[i].depth == depth) {
-      Side prev_side = table[i].prev_move.side;
+    if (table[i].value.depth == depth) {
+      Side prev_side = table[i].value.prev_move.side;
       for (Side side = 0; side < 6; side++) {
         if (depth == 1 || prev_side != side) {
           for (Turn turn = 0; turn < 3; turn++) {
             Move move = {.side = side, .turn = turn};
             State next = make_move(table[i], move);
-            State *pos = get(table, &next);
-            if (cmp_state(pos, &next))
+            State *pos = get(table, &next.key);
+            if (cmp_state(&pos->key, &next.key))
               insert(table, pos, &next);
           }
         }
@@ -243,13 +214,13 @@ static void *task(void *args) {
   }
   pthread_barrier_wait(task->barrier);
   for (size_t i = range_begin; i < range_end; i++) {
-    if (table[i].depth == depth + 1) {
-      State diff = delta(table[i], scrambled);
+    if (table[i].value.depth == depth + 1) {
+      Key diff = delta(table[i].key, scrambled.key);
       State *match = get(table, &diff);
-      if (cmp_state(&diff, match) == 0) {
+      if (cmp_state(&diff, &match->key) == 0) {
         pthread_mutex_lock(&output_lock);
-        output_moves(table, get(table, match));
-        output_moves(table, get(table, &table[i]));
+        output_moves(table, get(table, &match->key));
+        output_moves(table, get(table, &table[i].key));
         printf("\n");
         exit(0);
       }
@@ -275,9 +246,9 @@ State scramble(const State *state) {
     output_move(move);
   }
   printf("\n");
-  scrambled.depth = 1;
-  scrambled.prev_move.side = 0;
-  scrambled.prev_move.turn = 0;
+  scrambled.value.depth = 1;
+  scrambled.value.prev_move.side = 0;
+  scrambled.value.prev_move.turn = 0;
   return scrambled;
 }
 
@@ -297,7 +268,7 @@ int main() {
 
   const State scrambled = scramble(&kSolved);
 
-  insert(table, get(table, &kSolved), &kSolved);
+  insert(table, get(table, &kSolved.key), &kSolved);
 
   for (size_t depth = 1; true; depth++) {
     pthread_barrier_t barrier;
