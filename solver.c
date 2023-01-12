@@ -14,7 +14,8 @@
 #include "types.h"
 
 static const int kNumThreads = 32;
-static const int kScrambleDepth = 14;
+static const int kScrambleDepth = 12;
+static const int kSearchDepth = 5;
 
 static const size_t kMemGB = 2;
 static const size_t kMemB = kMemGB * 1024 * 1024 * 1024;
@@ -159,10 +160,19 @@ static void insert(TableEntry *table_state, TableEntry *pos, TableEntry state) {
   }
 }
 
+static Move reverse_move(Move move) {
+  Move reversed = {move.side, 2 - move.turn};
+  return reversed;
+}
+
+static void output_move(Move move) {
+  printf("%c%c ", side_to_char[move.side], turn_to_char[move.turn]);
+}
+
 static void output_moves(TableEntry *table, TableEntry state) {
   while (state.depth > 1) {
-    Move reversed = {state.prev_move.side, 2 - state.prev_move.turn};
-    printf("%c%c ", side_to_char[reversed.side], turn_to_char[reversed.turn]);
+    Move reversed = reverse_move(state.prev_move);
+    output_move(reversed);
     State moved = make_move(state.state, reversed);
     state = *get(table, moved);
   }
@@ -178,10 +188,52 @@ typedef struct {
   pthread_mutex_t *output_lock;
 } Task;
 
+static bool dfs(TableEntry *table, State state, size_t depth, Move prev_move,
+                State scrambled, pthread_mutex_t *output_lock) {
+  if (depth == 0) {
+    State diff = delta(state, scrambled);
+    TableEntry *match = get(table, diff);
+    if (cmp_state(diff, match->state) == 0) {
+      pthread_mutex_lock(output_lock);
+      output_moves(table, *get(table, match->state));
+      return true;
+    }
+    return false;
+  }
+  Side prev_side = prev_move.side;
+  for (Side side = 0; side < 6; side++) {
+    if (depth == 1 || prev_side != side) {
+      for (Turn turn = 0; turn < 3; turn++) {
+        Move move = {.side = side, .turn = turn};
+        State next = make_move(state, move);
+        if (dfs(table, next, depth - 1, move, scrambled, output_lock)) {
+          output_move(reverse_move(move));
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 static void *task(void *args) {
   Task *task = (Task *)args;
   TableEntry *table = task->table;
   size_t depth = task->depth;
+
+  if (depth > kSearchDepth) {
+    for (size_t i = task->range_begin; i < task->range_end; i++) {
+      if (table[i].depth == kSearchDepth) {
+        if (dfs(table, table[i].state, depth - kSearchDepth, table[i].prev_move,
+                task->scrambled, task->output_lock)) {
+          output_moves(table, *get(table, table[i].state));
+          printf("\n");
+          exit(0);
+        }
+      }
+    }
+    return NULL;
+  }
 
   for (size_t i = task->range_begin; i < task->range_end; i++) {
     if (table[i].depth == depth) {
