@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef uint8_t RotationState;
+typedef uint8_t Rotation;
 typedef uint8_t Edge;
 typedef uint8_t Corner;
 typedef uint8_t Side;
@@ -16,33 +16,33 @@ typedef struct {
 } Move;
 
 typedef struct __attribute__((packed)) {
-  RotationState edge00 : 5;
-  RotationState edge01 : 5;
-  RotationState edge02 : 5;
-  RotationState edge03 : 5;
-  RotationState edge04 : 5;
-  RotationState edge05 : 5;
-  RotationState edge06 : 5;
-  RotationState edge07 : 5;
-  RotationState edge08 : 5;
-  RotationState edge09 : 5;
-  RotationState edge10 : 5;
-  RotationState edge11 : 5;
+  Rotation edge00 : 5;
+  Rotation edge01 : 5;
+  Rotation edge02 : 5;
+  Rotation edge03 : 5;
+  Rotation edge04 : 5;
+  Rotation edge05 : 5;
+  Rotation edge06 : 5;
+  Rotation edge07 : 5;
+  Rotation edge08 : 5;
+  Rotation edge09 : 5;
+  Rotation edge10 : 5;
+  Rotation edge11 : 5;
 
-  RotationState corner0 : 5;
-  RotationState corner1 : 5;
-  RotationState corner2 : 5;
-  RotationState corner3 : 5;
-  RotationState corner4 : 5;
-  RotationState corner5 : 5;
-  RotationState corner6 : 5;
-  RotationState corner7 : 5;
+  Rotation corner0 : 5;
+  Rotation corner1 : 5;
+  Rotation corner2 : 5;
+  Rotation corner3 : 5;
+  Rotation corner4 : 5;
+  Rotation corner5 : 5;
+  Rotation corner6 : 5;
+  Rotation corner7 : 5;
 
   int unused : 4;
 } State;
 
 typedef struct __attribute__((aligned(16))) {
-  State key;
+  State state;
   uint8_t depth;
   Move prev_move;
 } TableEntry;

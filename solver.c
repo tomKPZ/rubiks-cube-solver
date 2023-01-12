@@ -20,8 +20,7 @@ static const size_t kMemGB = 2;
 static const size_t kMemB = kMemGB * 1024 * 1024 * 1024;
 static const size_t kTableSize = kMemB / sizeof(TableEntry);
 
-static const TableEntry kSolved = {
-    .key = {0}, .depth = 1, .prev_move = {.side = 0, .turn = 0}};
+static const State kSolved = {0};
 
 static size_t hash_state(State state) {
   // djb2
@@ -35,8 +34,8 @@ static int cmp_state(State state1, State state2) {
   return memcmp(&state1, &state2, sizeof(State));
 }
 
-static inline void unpack(State state, RotationState edges[12],
-                          RotationState corners[8]) {
+static inline void unpack(State state, Rotation edges[12],
+                          Rotation corners[8]) {
   edges[0] = state.edge00;
   edges[1] = state.edge01;
   edges[2] = state.edge02;
@@ -59,8 +58,7 @@ static inline void unpack(State state, RotationState edges[12],
   corners[7] = state.corner7;
 }
 
-static inline State pack(const RotationState edges[12],
-                         const RotationState corners[8]) {
+static inline State pack(const Rotation edges[12], const Rotation corners[8]) {
   State state;
   state.edge00 = edges[0];
   state.edge01 = edges[1];
@@ -82,39 +80,37 @@ static inline State pack(const RotationState edges[12],
   state.corner5 = corners[5];
   state.corner6 = corners[6];
   state.corner7 = corners[7];
+  state.unused = 0;
   return state;
 }
 
-static TableEntry make_move(TableEntry state, Move move) {
+static State make_move(State state, Move move) {
   const Edge *edge_orbit = edge_orbits[move.side];
   const Corner *corner_orbit = corner_orbits[move.side];
-  RotationState edges[12];
-  RotationState corners[8];
-  unpack(state.key, edges, corners);
+  Rotation edges[12];
+  Rotation corners[8];
+  unpack(state, edges, corners);
 
   uint8_t offset = 3 - move.turn;
 
-  RotationState tmp_edges[4];
+  Rotation tmp_edges[4];
   for (size_t i = 0; i < 4; i++)
     tmp_edges[i] = rotate[edges[edge_orbit[i]]][move.side][move.turn];
   for (size_t i = 0; i < 4; i++)
     edges[edge_orbit[i]] = tmp_edges[(i + offset) % 4];
 
-  RotationState tmp_corners[4];
+  Rotation tmp_corners[4];
   for (size_t i = 0; i < 4; i++)
     tmp_corners[i] = rotate[corners[corner_orbit[i]]][move.side][move.turn];
   for (size_t i = 0; i < 4; i++)
     corners[corner_orbit[i]] = tmp_corners[(i + offset) % 4];
 
-  state.key = pack(edges, corners);
-  state.prev_move = move;
-  state.depth++;
-  return state;
+  return pack(edges, corners);
 }
 
 static State delta(State a, State b) {
-  RotationState rea[12], reb[12], rec[12];
-  RotationState rca[8], rcb[8], rcc[8];
+  Rotation rea[12], reb[12], rec[12];
+  Rotation rca[8], rcb[8], rcc[8];
   unpack(a, rea, rca);
   unpack(b, reb, rcb);
 
@@ -146,7 +142,7 @@ static State delta(State a, State b) {
 static TableEntry *get(TableEntry *table, State state) {
   for (size_t bucket = hash_state(state) % kTableSize; true;
        bucket = (bucket + 1) % kTableSize) {
-    if (!table[bucket].depth || cmp_state(state, table[bucket].key) == 0)
+    if (!table[bucket].depth || cmp_state(state, table[bucket].state) == 0)
       return &table[bucket];
   }
 }
@@ -163,63 +159,57 @@ static void insert(TableEntry *table_state, TableEntry *pos, TableEntry state) {
   }
 }
 
-static void output_move(Move move) {
-  printf("%c%c ", side_to_char[move.side], turn_to_char[move.turn]);
-}
-
 static void output_moves(TableEntry *table, TableEntry state) {
   while (state.depth > 1) {
     Move reversed = {state.prev_move.side, 2 - state.prev_move.turn};
-    output_move(reversed);
-    TableEntry moved = make_move(state, reversed);
-    state = *get(table, moved.key);
+    printf("%c%c ", side_to_char[reversed.side], turn_to_char[reversed.turn]);
+    State moved = make_move(state.state, reversed);
+    state = *get(table, moved);
   }
 }
 
 typedef struct {
   TableEntry *table;
-  const TableEntry *scrambled;
+  State scrambled;
   size_t depth;
   size_t range_begin;
   size_t range_end;
   pthread_barrier_t *barrier;
+  pthread_mutex_t *output_lock;
 } Task;
-
-static pthread_mutex_t output_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static void *task(void *args) {
   Task *task = (Task *)args;
   TableEntry *table = task->table;
   size_t depth = task->depth;
-  size_t range_begin = task->range_begin;
-  size_t range_end = task->range_end;
-  TableEntry scrambled = *task->scrambled;
 
-  for (size_t i = range_begin; i < range_end; i++) {
+  for (size_t i = task->range_begin; i < task->range_end; i++) {
     if (table[i].depth == depth) {
       Side prev_side = table[i].prev_move.side;
       for (Side side = 0; side < 6; side++) {
         if (depth == 1 || prev_side != side) {
           for (Turn turn = 0; turn < 3; turn++) {
             Move move = {.side = side, .turn = turn};
-            TableEntry next = make_move(table[i], move);
-            TableEntry *pos = get(table, next.key);
-            if (cmp_state(pos->key, next.key))
-              insert(table, pos, next);
+            State next = make_move(table[i].state, move);
+            TableEntry *pos = get(table, next);
+            if (cmp_state(pos->state, next)) {
+              TableEntry entry = {next, table[i].depth + 1, move};
+              insert(table, pos, entry);
+            }
           }
         }
       }
     }
   }
   pthread_barrier_wait(task->barrier);
-  for (size_t i = range_begin; i < range_end; i++) {
+  for (size_t i = task->range_begin; i < task->range_end; i++) {
     if (table[i].depth == depth + 1) {
-      State diff = delta(table[i].key, scrambled.key);
+      State diff = delta(table[i].state, task->scrambled);
       TableEntry *match = get(table, diff);
-      if (cmp_state(diff, match->key) == 0) {
-        pthread_mutex_lock(&output_lock);
-        output_moves(table, *get(table, match->key));
-        output_moves(table, *get(table, table[i].key));
+      if (cmp_state(diff, match->state) == 0) {
+        pthread_mutex_lock(task->output_lock);
+        output_moves(table, *get(table, match->state));
+        output_moves(table, *get(table, table[i].state));
         printf("\n");
         exit(0);
       }
@@ -228,8 +218,7 @@ static void *task(void *args) {
   return NULL;
 }
 
-static TableEntry scramble(const TableEntry *state) {
-  TableEntry scrambled = *state;
+static State scramble(State state) {
   srand(time(NULL));
   Side prev = 6;
   for (int i = 0; i < kScrambleDepth; i++) {
@@ -241,14 +230,11 @@ static TableEntry scramble(const TableEntry *state) {
     Move move = {.side = side, .turn = turn};
 
     prev = side;
-    scrambled = make_move(scrambled, move);
+    state = make_move(state, move);
     output_move(move);
   }
   printf("\n");
-  scrambled.depth = 1;
-  scrambled.prev_move.side = 0;
-  scrambled.prev_move.turn = 0;
-  return scrambled;
+  return state;
 }
 
 int main() {
@@ -265,23 +251,26 @@ int main() {
     }
   }
 
-  const TableEntry scrambled = scramble(&kSolved);
+  const State scrambled = scramble(kSolved);
 
-  insert(table, get(table, kSolved.key), kSolved);
+  TableEntry solved = {kSolved, 1, {0, 0}};
+  insert(table, get(table, kSolved), solved);
 
   for (size_t depth = 1; true; depth++) {
     pthread_barrier_t barrier;
     pthread_barrier_init(&barrier, NULL, kNumThreads);
+    pthread_mutex_t output_lock = PTHREAD_MUTEX_INITIALIZER;
 
     Task args[kNumThreads];
     pthread_t tids[kNumThreads];
     for (int i = 0; i < kNumThreads; i++) {
       args[i].table = table;
-      args[i].scrambled = &scrambled;
+      args[i].scrambled = scrambled;
       args[i].depth = depth;
       args[i].range_begin = i * kTableSize / kNumThreads;
       args[i].range_end = (i + 1) * kTableSize / kNumThreads;
       args[i].barrier = &barrier;
+      args[i].output_lock = &output_lock;
       pthread_create(&tids[i], NULL, task, &args[i]);
     }
     for (int i = 0; i < kNumThreads; i++)
