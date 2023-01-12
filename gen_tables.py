@@ -113,12 +113,12 @@ def output(f):
     r2c = [[rotation_to_id(CORNERS, r, c) for c in CORNERS] for r in ROTS]
     r2e = [[rotation_to_id(EDGES, r, e) for e in EDGES] for r in ROTS]
     rd = [[rotation_delta(r1, r2) for r2 in ROTS] for r1 in ROTS]
-    output_table("RotationState rotate[24][6][3]", rotate, f)
+    output_table("Rotation rotate[24][6][3]", rotate, f)
     output_table("Edge edge_orbits[6][4]", edge_orbits, f)
     output_table("Corner corner_orbits[6][4]", corner_orbits, f)
     output_table("Corner rotation_to_corner[24][8]", r2c, f)
     output_table("Corner rotation_to_edge[24][12]", r2e, f)
-    output_table("RotationState rotation_delta[24][24]", rd, f)
+    output_table("Rotation rotation_delta[24][24]", rd, f)
 
 
 def main():
