@@ -5,6 +5,8 @@
 #include <stdint.h>
 
 typedef uint8_t Rotation;
+typedef uint8_t Piece;
+typedef uint8_t Face;
 typedef uint8_t Edge;
 typedef uint8_t Corner;
 typedef uint8_t Side;
@@ -14,6 +16,12 @@ typedef struct {
   Side side;
   Turn turn;
 } Move;
+
+typedef struct {
+  uint8_t r;
+  uint8_t g;
+  uint8_t b;
+} Color;
 
 typedef struct __attribute__((packed)) {
   Rotation edge00 : 5;
@@ -49,5 +57,10 @@ typedef struct __attribute__((aligned(16))) {
 
 _Static_assert(sizeof(TableEntry) == 16, "");
 
-const char side_to_char[] = "FRUDLB";
-const char turn_to_char[] = " 2'";
+static const char side_to_char[] = "FRUDLB";
+static const char turn_to_char[] = " 2'";
+
+static const Color colors[6] = {
+    {0, 255, 0},   {255, 0, 0},   {255, 255, 255},
+    {255, 255, 0}, {255, 128, 0}, {0, 0, 255},
+};
