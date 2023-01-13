@@ -289,6 +289,24 @@ static State scramble(State state) {
   return state;
 }
 
+static void output(State state) {
+  Rotation pieces[26] = {0};
+  unpack(state, pieces + 6, pieces + 18);
+  for (int r = 0; r < 9; r++) {
+    for (int c = 0; c < 12; c++) {
+      Face face = net[r / 3][c / 3];
+      if (face == 6) {
+        printf("\033[m  ");
+      } else {
+        Piece piece = face_pieces[face][r % 3][c % 3];
+        Color color = colors[rotation_to_face[face][pieces[piece]]];
+        printf("\033[48;2;%d;%d;%dm  ", color.r, color.g, color.b);
+      }
+    }
+    printf("\033[m\n");
+  }
+}
+
 int main() {
   TableEntry *table = mmap(NULL, kMemB, PROT_READ | PROT_WRITE,
                            MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE |
@@ -304,6 +322,7 @@ int main() {
   }
 
   const State scrambled = scramble(kSolved);
+  output(scrambled);
 
   TableEntry solved = {kSolved, 1, {0, 0}};
   insert(table, get(table, kSolved), solved);
